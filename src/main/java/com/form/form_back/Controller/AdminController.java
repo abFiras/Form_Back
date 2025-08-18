@@ -17,10 +17,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -39,7 +36,6 @@ public class AdminController {
     PasswordEncoder encoder;
 
     @PostMapping("/create-user")
-    @PreAuthorize("hasRole('ROLE_ADMIN')") // ✅ accessible uniquement aux admins
     public ResponseEntity<?> createUser(@Valid @RequestBody SignupDto signupRequest) {
         if (userRepository.existsByUsername(signupRequest.getUsername())) {
             return ResponseEntity
@@ -60,17 +56,40 @@ public class AdminController {
         user.setPassword(encoder.encode(signupRequest.getPassword()));
         user.setPhone(signupRequest.getPhone());
 
-        // Assign ROLE_USER by default
-        Role userRole = roleRepository.findByName(ERole.ROLE_USER)
-                .orElseThrow(() -> new RuntimeException("Error: Role USER is not found."));
-        user.setRoles(Collections.singleton(userRole));
+        // ✅ Gestion des rôles dynamiques
+        Set<String> strRoles = signupRequest.getRole();
+        Set<Role> roles = new HashSet<>();
 
+        if (strRoles == null || strRoles.isEmpty()) {
+            // Rôle par défaut si rien n'est envoyé
+            Role userRole = roleRepository.findByName(ERole.ROLE_USER)
+                    .orElseThrow(() -> new RuntimeException("Error: Role USER is not found."));
+            roles.add(userRole);
+        } else {
+            strRoles.forEach(role -> {
+                switch (role) {
+                    case "ROLE_ADMIN":
+                        Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
+                                .orElseThrow(() -> new RuntimeException("Error: Role ADMIN is not found."));
+                        roles.add(adminRole);
+                        break;
+
+                    default:
+                        Role userRole = roleRepository.findByName(ERole.ROLE_USER)
+                                .orElseThrow(() -> new RuntimeException("Error: Role USER is not found."));
+                        roles.add(userRole);
+                }
+            });
+        }
+
+        user.setRoles(roles);
         userRepository.save(user);
 
         Map<String, String> response = new HashMap<>();
-        response.put("message", "User created successfully!");
+        response.put("message", "Utilisateur créé avec succès !");
         return ResponseEntity.ok(response);
     }
+
 
     @Operation(description = "getAllUsers")
     @GetMapping(path = "/getAllUsers")

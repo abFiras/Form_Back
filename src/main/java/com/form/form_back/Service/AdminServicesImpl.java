@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class AdminServicesImpl implements AdminServices {
@@ -29,13 +31,22 @@ public class AdminServicesImpl implements AdminServices {
                 .map(user -> {
                     user.setUsername(updatedUser.getUsername());
                     user.setEmail(updatedUser.getEmail());
-                    user.setRoles(updatedUser.getRoles());
                     user.setPhone(updatedUser.getPhone());
                     user.setPassword(updatedUser.getPassword());
+
+                    // Récupérer les rôles depuis la DB par leur nom
+                    Set<Role> roles = updatedUser.getRoles().stream()
+                            .map(role -> roleRepository.findByName(role.getName())
+                                    .orElseThrow(() -> new RuntimeException("Role not found: " + role.getName())))
+                            .collect(Collectors.toSet());
+
+                    user.setRoles(roles);
+
                     return userRepository.save(user);
                 })
                 .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
     }
+
 
     @Override
     public List<Role> getAllROles() {

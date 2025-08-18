@@ -14,7 +14,6 @@ import java.util.Set;
 @NoArgsConstructor
 public class SignupDto {
     @NotBlank
-    @Size(min = 3, max = 20)
     private String username;
     @NotBlank
     @Size(max = 50)
@@ -22,7 +21,6 @@ public class SignupDto {
     private String email;
     private Set<String> role;
     @NotBlank
-    @Size(min = 6, max = 40)
     private String password;
 
     @NotBlank
