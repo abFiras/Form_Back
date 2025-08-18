@@ -23,11 +23,20 @@ public class AdminServicesImpl implements AdminServices {
     public List<Utilisateur> getall() {
         return userRepository.findAll();
     }
-
     @Override
-    public void UpdateROle(Long id, String role) {
-
+    public Utilisateur updateUser(Long id, Utilisateur updatedUser) {
+        return userRepository.findById(id)
+                .map(user -> {
+                    user.setUsername(updatedUser.getUsername());
+                    user.setEmail(updatedUser.getEmail());
+                    user.setRoles(updatedUser.getRoles());
+                    user.setPhone(updatedUser.getPhone());
+                    user.setPassword(updatedUser.getPassword());
+                    return userRepository.save(user);
+                })
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
     }
+
     @Override
     public List<Role> getAllROles() {
         return roleRepository.findAll();

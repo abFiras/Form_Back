@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface  AdminServices {
     List<Utilisateur> getall();
-    void UpdateROle(Long id,String role);
+     Utilisateur updateUser(Long id, Utilisateur updatedUser) ;
     List<Role> getAllROles();
     String banUser(String email);
     String suspendUser(String email);

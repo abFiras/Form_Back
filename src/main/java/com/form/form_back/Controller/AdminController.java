@@ -18,7 +18,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -65,7 +67,9 @@ public class AdminController {
 
         userRepository.save(user);
 
-        return ResponseEntity.ok("User created successfully!");
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "User created successfully!");
+        return ResponseEntity.ok(response);
     }
 
     @Operation(description = "getAllUsers")
@@ -74,10 +78,10 @@ public class AdminController {
         return adminServices.getall();
     }
 
-    @Operation(description = "add user")
-    @PostMapping(path = "/updateUser/{id}")
-    void UpdatUser(@PathVariable Long id, @RequestBody String role) {
-        adminServices.UpdateROle(id, role);
+    @PutMapping("/{id}")
+    public ResponseEntity<Utilisateur> updateUser(@PathVariable Long id, @RequestBody Utilisateur updatedUser) {
+        Utilisateur user = adminServices.updateUser(id, updatedUser);
+        return ResponseEntity.ok(user);
     }
 
     @Operation(description = "getAllRole")
