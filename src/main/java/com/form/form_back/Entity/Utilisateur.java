@@ -13,7 +13,6 @@ import java.util.Set;
 @Entity
 @Data
 @AllArgsConstructor
-@NoArgsConstructor
 @Table(name = "users",
         uniqueConstraints = {
                 @UniqueConstraint(columnNames = "username"),
@@ -38,7 +37,9 @@ public class Utilisateur implements Serializable {
     String phone;
     @Column
     private Boolean banned;
-
+    // Nouveau champ pour la photo de profil
+    @Column(columnDefinition = "LONGTEXT")
+    private String profilePhotoUrl;
     @Column
     private Boolean  suspended = false;
     @Column
@@ -134,6 +135,13 @@ public class Utilisateur implements Serializable {
         return resetPasswordToken;
     }
 
+    public String getProfilePhotoUrl() {
+        return profilePhotoUrl;
+    }
+
+    public void setProfilePhotoUrl(String profilePhotoUrl) {
+        this.profilePhotoUrl = profilePhotoUrl;
+    }
     public void setResetPasswordToken(String resetPasswordToken) {
         this.resetPasswordToken = resetPasswordToken;
     }

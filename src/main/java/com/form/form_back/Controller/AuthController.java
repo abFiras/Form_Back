@@ -176,6 +176,98 @@ public class AuthController {
 
         return ResponseEntity.ok("Mot de passe réinitialisé avec succès");
     }
+// Ajoutez ces méthodes à votre AuthController existant
 
+    @PostMapping("/update-profile")
+    public ResponseEntity<?> updateProfile(Authentication authentication, @RequestBody Map<String, String> updates) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Utilisateur non connecté");
+        }
+
+        String username = authentication.getName();
+        Utilisateur user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        // Mise à jour des champs si présents
+        if (updates.containsKey("username")) {
+            String newUsername = updates.get("username");
+            if (userRepository.existsByUsername(newUsername) && !newUsername.equals(user.getUsername())) {
+                return ResponseEntity.badRequest().body(new MessageResponse("Ce nom d'utilisateur est déjà pris"));
+            }
+            user.setUsername(newUsername);
+        }
+
+        if (updates.containsKey("email")) {
+            String newEmail = updates.get("email");
+            if (userRepository.existsByEmail(newEmail) && !newEmail.equals(user.getEmail())) {
+                return ResponseEntity.badRequest().body(new MessageResponse("Cette adresse email est déjà utilisée"));
+            }
+            user.setEmail(newEmail);
+        }
+
+        if (updates.containsKey("phone")) {
+            user.setPhone(updates.get("phone"));
+        }
+
+        userRepository.save(user);
+        return ResponseEntity.ok(user);
+    }
+
+    @PostMapping("/update-profile-photo")
+    public ResponseEntity<?> updateProfilePhoto(Authentication authentication, @RequestBody Map<String, String> request) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Utilisateur non connecté");
+        }
+
+        String username = authentication.getName();
+        Utilisateur user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        String photoUrl = request.get("photoUrl");
+        if (photoUrl == null || photoUrl.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("URL de la photo requise");
+        }
+
+        user.setProfilePhotoUrl(photoUrl);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Photo de profil mise à jour avec succès",
+                "photoUrl", photoUrl
+        ));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<?> changePassword(Authentication authentication, @RequestBody Map<String, String> request) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Utilisateur non connecté");
+        }
+
+        String username = authentication.getName();
+        Utilisateur user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+
+        String currentPassword = request.get("currentPassword");
+        String newPassword = request.get("newPassword");
+
+        if (currentPassword == null || newPassword == null) {
+            return ResponseEntity.badRequest().body("Mot de passe actuel et nouveau mot de passe requis");
+        }
+
+        // Vérifier le mot de passe actuel
+        if (!encoder.matches(currentPassword, user.getPassword())) {
+            return ResponseEntity.badRequest().body("Mot de passe actuel incorrect");
+        }
+
+        // Valider le nouveau mot de passe
+        if (newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body("Le nouveau mot de passe doit contenir au moins 6 caractères");
+        }
+
+        user.setPassword(encoder.encode(newPassword));
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of("message", "Mot de passe modifié avec succès!"));
+    }
 
 }
