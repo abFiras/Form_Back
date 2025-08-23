@@ -25,13 +25,14 @@ public class UserDetailsImpl implements UserDetails {
     private String phone;
     private Collection<? extends GrantedAuthority> authorities;
 
-    public UserDetailsImpl(Long id, String username, String email, String password,
+    public UserDetailsImpl(Long id, String username, String email, String password,boolean banned,
                            Collection<? extends GrantedAuthority> authorities, String phone) {
         this.id = id;
         this.username = username;
         this.email = email;
         this.password = password;
         this.authorities = authorities;
+        this.banned = banned;
 
         this.phone=phone;
     }
@@ -46,6 +47,7 @@ public class UserDetailsImpl implements UserDetails {
                 user.getUsername(),
                 user.getEmail(),
                 user.getPassword(),
+                Boolean.TRUE.equals(user.getBanned()), // 👈 ici on prend la vraie valeur
                 authorities,
                 user.getPhone());
 
@@ -108,5 +110,10 @@ public class UserDetailsImpl implements UserDetails {
             return false;
         UserDetailsImpl user = (UserDetailsImpl) o;
         return Objects.equals(id, user.id);
+    }
+    private boolean banned;
+
+    public boolean isBanned() {
+        return banned;
     }
 }

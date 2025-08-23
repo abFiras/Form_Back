@@ -52,6 +52,8 @@ public class AdminController {
         Utilisateur user = new Utilisateur();
         user.setUsername(signupRequest.getUsername());
         user.setEmail(signupRequest.getEmail());
+        user.setPrenom(signupRequest.getPrenom());
+        user.setNom(signupRequest.getNom());
         user.setPassword(encoder.encode(signupRequest.getPassword()));
         user.setPhone(signupRequest.getPhone());
 

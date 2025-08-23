@@ -26,6 +26,11 @@ public class SignupDto {
     @NotBlank
     private String phone;
 
+    @NotBlank
+    private String prenom;
+    @NotBlank
+    private String nom;
+
     public String getUsername() {
         return username;
     }
@@ -64,5 +69,21 @@ public class SignupDto {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getPrenom() {
+        return prenom;
+    }
+
+    public void setPrenom(String prenom) {
+        this.prenom = prenom;
+    }
+
+    public String getNom() {
+        return nom;
+    }
+
+    public void setNom(String nom) {
+        this.nom = nom;
     }
 }

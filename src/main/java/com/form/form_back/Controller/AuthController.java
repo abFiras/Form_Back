@@ -74,13 +74,23 @@ public class AuthController {
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginDto loginDto) {
         logger.info("Attempting to authenticate user: {}", loginDto.getUsername());
+
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginDto.getUsername(), loginDto.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateJwtToken(authentication);
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+
+        // Vérifier si l'utilisateur est banni
+        if (userDetails.isBanned()) {
+            return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("error", "Votre compte est banni. Contactez l'administrateur."));
+        }
+
+        String jwt = jwtUtils.generateJwtToken(authentication);
+
         List<String> roles = userDetails.getAuthorities().stream()
                 .map(item -> item.getAuthority())
                 .collect(Collectors.toList());
@@ -92,6 +102,7 @@ public class AuthController {
                 roles,
                 userDetails.getPhone()));
     }
+
 
     @Operation(description = "signup")
     @PostMapping("/signup")
@@ -111,7 +122,10 @@ public class AuthController {
         // Create new user's account
         Utilisateur user = new Utilisateur(signupDto.getUsername(),
                 signupDto.getEmail(),
+                signupDto.getPrenom(),
+                signupDto.getNom(),
                 encoder.encode(signupDto.getPassword()));
+
         user.setPhone(signupDto.getPhone());
 
         Set<Role> roles = new HashSet<>();
@@ -174,7 +188,7 @@ public class AuthController {
         user.setResetPasswordExpiry(null);
         userRepository.save(user);
 
-        return ResponseEntity.ok("Mot de passe réinitialisé avec succès");
+        return ResponseEntity.ok(Map.of("message", "Mot de passe réinitialisé avec succès"));
     }
 // Ajoutez ces méthodes à votre AuthController existant
 
@@ -204,9 +218,14 @@ public class AuthController {
             }
             user.setEmail(newEmail);
         }
-
         if (updates.containsKey("phone")) {
             user.setPhone(updates.get("phone"));
+        }
+        if (updates.containsKey("prenom")) {
+            user.setPrenom(updates.get("prenom"));
+        }
+        if (updates.containsKey("nom")) {
+            user.setNom(updates.get("nom"));
         }
 
         userRepository.save(user);

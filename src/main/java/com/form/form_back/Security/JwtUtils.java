@@ -8,9 +8,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
+import org.springframework.security.core.GrantedAuthority;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtUtils {
@@ -36,6 +38,10 @@ public class JwtUtils {
 
         return Jwts.builder()
                 .setSubject(userPrincipal.getUsername())
+                .claim("id", userPrincipal.getId())      // add ID
+                .claim("email", userPrincipal.getEmail()) // add email
+                .claim("roles", userPrincipal.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority).collect(Collectors.toList()))
                 .setIssuedAt(new Date())
                 .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
                 .signWith(key, SignatureAlgorithm.HS256)

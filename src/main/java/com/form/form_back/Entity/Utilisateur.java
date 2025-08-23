@@ -27,6 +27,12 @@ public class Utilisateur implements Serializable {
     @Size(max = 20)
     private String username;
     @NotBlank
+    @Size(max = 20)
+    private String prenom;
+    @NotBlank
+    @Size(max = 20)
+    private String nom;
+    @NotBlank
     @Size(max = 50)
     @Email
     private String email;
@@ -59,6 +65,16 @@ public class Utilisateur implements Serializable {
     }
     public Utilisateur() {
     }
+
+    public Utilisateur( String username,String email, String prenom, String nom,  String password) {
+        this.username = username;
+        this.prenom = prenom;
+        this.nom = nom;
+        this.email = email;
+        this.password = password;
+    }
+
+
     public Long getId() {
         return id;
     }
@@ -97,6 +113,22 @@ public class Utilisateur implements Serializable {
 
     public void setPhone(String phone) {
         this.phone = phone;
+    }
+
+    public String getPrenom() {
+        return prenom;
+    }
+
+    public void setPrenom(String prenom) {
+        this.prenom = prenom;
+    }
+
+    public String getNom() {
+        return nom;
+    }
+
+    public void setNom(String nom) {
+        this.nom = nom;
     }
 
     public Boolean getBanned() {

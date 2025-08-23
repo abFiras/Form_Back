@@ -33,7 +33,8 @@ public class AdminServicesImpl implements AdminServices {
                     user.setEmail(updatedUser.getEmail());
                     user.setPhone(updatedUser.getPhone());
                     user.setPassword(updatedUser.getPassword());
-
+                    user.setPrenom(updatedUser.getPrenom());
+                    user.setNom(updatedUser.getNom());
                     // Récupérer les rôles depuis la DB par leur nom
                     Set<Role> roles = updatedUser.getRoles().stream()
                             .map(role -> roleRepository.findByName(role.getName())
