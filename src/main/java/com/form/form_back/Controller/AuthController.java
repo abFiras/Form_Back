@@ -73,10 +73,10 @@ public class AuthController {
     @Operation(description = "signin")
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginDto loginDto) {
-        logger.info("Attempting to authenticate user: {}", loginDto.getUsername());
+        logger.info("Attempting to authenticate user: {}", loginDto.getEmail());
 
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginDto.getUsername(), loginDto.getPassword()));
+                new UsernamePasswordAuthenticationToken(loginDto.getEmail(), loginDto.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
 

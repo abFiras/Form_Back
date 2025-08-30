@@ -37,9 +37,9 @@ public class JwtUtils {
         UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal();
 
         return Jwts.builder()
-                .setSubject(userPrincipal.getUsername())
+                .setSubject(userPrincipal.getEmail())
                 .claim("id", userPrincipal.getId())      // add ID
-                .claim("email", userPrincipal.getEmail()) // add email
+                .claim("username", userPrincipal.getEmail()) // add email
                 .claim("roles", userPrincipal.getAuthorities().stream()
                         .map(GrantedAuthority::getAuthority).collect(Collectors.toList()))
                 .setIssuedAt(new Date())
