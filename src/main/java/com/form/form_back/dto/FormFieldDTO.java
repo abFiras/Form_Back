@@ -4,6 +4,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -11,10 +13,11 @@ public class FormFieldDTO {
     private Long id;
     private String type;
     private String label;
+    private String fieldName;
     private String placeholder;
-    private Integer position;
+    private Integer order;
     private Boolean required;
-    private String options; // JSON string
+    private List<FieldOptionDTO> options; // ✅ Changé de String vers List<FieldOptionDTO>
     private String validation; // JSON string
     private String styling; // JSON string
 
@@ -34,6 +37,14 @@ public class FormFieldDTO {
         this.type = type;
     }
 
+    public String getFieldName() {
+        return fieldName;
+    }
+
+    public void setFieldName(String fieldName) {
+        this.fieldName = fieldName;
+    }
+
     public String getLabel() {
         return label;
     }
@@ -50,12 +61,12 @@ public class FormFieldDTO {
         this.placeholder = placeholder;
     }
 
-    public Integer getPosition() {
-        return position;
+    public Integer getOrder() {
+        return order;
     }
 
-    public void setPosition(Integer position) {
-        this.position = position;
+    public void setOrder(Integer order) {
+        this.order = order;
     }
 
     public Boolean getRequired() {
@@ -66,11 +77,12 @@ public class FormFieldDTO {
         this.required = required;
     }
 
-    public String getOptions() {
+
+    public List<FieldOptionDTO> getOptions() {
         return options;
     }
 
-    public void setOptions(String options) {
+    public void setOptions(List<FieldOptionDTO> options) {
         this.options = options;
     }
 

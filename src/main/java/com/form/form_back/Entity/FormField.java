@@ -21,16 +21,19 @@ public class FormField {
     @JsonBackReference
     private Form form;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String type; // TEXT, EMAIL, NUMBER, DATE, SELECT, CHECKBOX, RADIO, TEXTAREA, FILE
 
     @Column(nullable = false)
     private String label;
+    @Column(name = "field_name", nullable = true) // ✅ Ajouté fieldName
+    private String fieldName;
 
     private String placeholder;
 
-    @Column(nullable = false)
-    private Integer position; // Pour l'ordre des champs
+    @Column(name = "`order`", nullable = true) // ✅ autoriser null
+    private Integer order;
+
 
     @Column(nullable = false)
     private Boolean required = false;
@@ -60,6 +63,14 @@ public class FormField {
         this.form = form;
     }
 
+    public String getFieldName() {
+        return fieldName;
+    }
+
+    public void setFieldName(String fieldName) {
+        this.fieldName = fieldName;
+    }
+
     public String getType() {
         return type;
     }
@@ -84,12 +95,12 @@ public class FormField {
         this.label = label;
     }
 
-    public Integer getPosition() {
-        return position;
+    public Integer getOrder() {
+        return order;
     }
 
-    public void setPosition(Integer position) {
-        this.position = position;
+    public void setOrder(Integer order) {
+        this.order = order;
     }
 
     public Boolean getRequired() {

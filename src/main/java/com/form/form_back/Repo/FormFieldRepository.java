@@ -7,6 +7,6 @@ import java.util.List;
 
 @Repository
 public interface FormFieldRepository extends JpaRepository<FormField, Long> {
-    List<FormField> findByFormIdOrderByPosition(Long formId);
+    List<FormField> findByFormIdOrderByOrder(Long formId);
     void deleteByFormId(Long formId);
 }

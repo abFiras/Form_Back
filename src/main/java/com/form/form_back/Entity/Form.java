@@ -25,7 +25,7 @@ public class Form {
 
     private String description;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String status = "DRAFT"; // DRAFT, PUBLISHED, ARCHIVED
 
     @OneToMany(mappedBy = "form", cascade = CascadeType.ALL, fetch = FetchType.LAZY)

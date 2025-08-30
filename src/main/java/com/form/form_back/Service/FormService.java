@@ -1,11 +1,13 @@
 package com.form.form_back.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.form.form_back.Entity.Form;
 import com.form.form_back.Entity.FormField;
 import com.form.form_back.Entity.FormSubmission;
 import com.form.form_back.Repo.FormRepository;
 import com.form.form_back.Repo.FormFieldRepository;
 import com.form.form_back.Repo.FormSubmissionRepository;
+import com.form.form_back.dto.FieldOptionDTO;
 import com.form.form_back.dto.FormDTO;
 import com.form.form_back.dto.FormFieldDTO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +28,8 @@ public class FormService {
 
     @Autowired
     private FormSubmissionRepository formSubmissionRepository;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<Form> getAllForms() {
         return formRepository.findAll();
@@ -50,10 +54,22 @@ public class FormService {
                 field.setForm(savedForm);
                 field.setType(fieldDTO.getType());
                 field.setLabel(fieldDTO.getLabel());
+                field.setFieldName(fieldDTO.getFieldName()); // ✅ Ajouté fieldName
                 field.setPlaceholder(fieldDTO.getPlaceholder());
-                field.setPosition(fieldDTO.getPosition());
+                field.setOrder(fieldDTO.getOrder() != null ? fieldDTO.getOrder() : 0);
                 field.setRequired(fieldDTO.getRequired() != null ? fieldDTO.getRequired() : false);
-                field.setOptions(fieldDTO.getOptions());
+
+                // ✅ Conversion des options List<FieldOptionDTO> -> JSON String
+                if (fieldDTO.getOptions() != null && !fieldDTO.getOptions().isEmpty()) {
+                    try {
+                        String optionsJson = objectMapper.writeValueAsString(fieldDTO.getOptions());
+                        field.setOptions(optionsJson);
+                    } catch (Exception e) {
+                        System.err.println("Erreur lors de la sérialisation des options: " + e.getMessage());
+                        field.setOptions(null);
+                    }
+                }
+
                 field.setValidation(fieldDTO.getValidation());
                 field.setStyling(fieldDTO.getStyling());
 
@@ -82,10 +98,22 @@ public class FormService {
                 field.setForm(form);
                 field.setType(fieldDTO.getType());
                 field.setLabel(fieldDTO.getLabel());
+                field.setFieldName(fieldDTO.getFieldName()); // ✅ Ajouté fieldName
                 field.setPlaceholder(fieldDTO.getPlaceholder());
-                field.setPosition(fieldDTO.getPosition());
+                field.setOrder(fieldDTO.getOrder() != null ? fieldDTO.getOrder() : 0);
                 field.setRequired(fieldDTO.getRequired() != null ? fieldDTO.getRequired() : false);
-                field.setOptions(fieldDTO.getOptions());
+
+                // ✅ Conversion des options List<FieldOptionDTO> -> JSON String
+                if (fieldDTO.getOptions() != null && !fieldDTO.getOptions().isEmpty()) {
+                    try {
+                        String optionsJson = objectMapper.writeValueAsString(fieldDTO.getOptions());
+                        field.setOptions(optionsJson);
+                    } catch (Exception e) {
+                        System.err.println("Erreur lors de la sérialisation des options: " + e.getMessage());
+                        field.setOptions(null);
+                    }
+                }
+
                 field.setValidation(fieldDTO.getValidation());
                 field.setStyling(fieldDTO.getStyling());
 
@@ -96,6 +124,37 @@ public class FormService {
         formRepository.save(form);
         return formRepository.findByIdWithFields(id);
     }
+
+    // ✅ Méthode pour convertir FormField -> FormFieldDTO avec désérialisation des options
+    public FormFieldDTO convertToFieldDTO(FormField field) {
+        FormFieldDTO dto = new FormFieldDTO();
+        dto.setId(field.getId());
+        dto.setType(field.getType());
+        dto.setLabel(field.getLabel());
+        dto.setFieldName(field.getFieldName());
+        dto.setPlaceholder(field.getPlaceholder());
+        dto.setOrder(field.getOrder());
+        dto.setRequired(field.getRequired());
+        dto.setValidation(field.getValidation());
+        dto.setStyling(field.getStyling());
+
+        // Désérialisation des options JSON -> List<FieldOptionDTO>
+        if (field.getOptions() != null && !field.getOptions().trim().isEmpty()) {
+            try {
+                List<FieldOptionDTO> options = objectMapper.readValue(
+                        field.getOptions(),
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, FieldOptionDTO.class)
+                );
+                dto.setOptions(options);
+            } catch (Exception e) {
+                System.err.println("Erreur lors de la désérialisation des options: " + e.getMessage());
+                dto.setOptions(null);
+            }
+        }
+
+        return dto;
+    }
+
 
     public void deleteForm(Long id) {
         formRepository.deleteById(id);
