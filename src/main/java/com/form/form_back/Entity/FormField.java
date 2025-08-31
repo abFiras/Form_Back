@@ -46,6 +46,30 @@ public class FormField {
 
     @Column(columnDefinition = "TEXT")
     private String styling; // JSON pour le style CSS
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "external_list_id")
+    private ExternalList externalList;
+
+    // ✅ NOUVEAU: Indique si le champ utilise une liste externe
+    @Column(name = "use_external_list")
+    private Boolean useExternalList = false;
+
+
+    public ExternalList getExternalList() {
+        return externalList;
+    }
+
+    public void setExternalList(ExternalList externalList) {
+        this.externalList = externalList;
+    }
+
+    public Boolean getUseExternalList() {
+        return useExternalList;
+    }
+
+    public void setUseExternalList(Boolean useExternalList) {
+        this.useExternalList = useExternalList;
+    }
 
     public Long getId() {
         return id;
