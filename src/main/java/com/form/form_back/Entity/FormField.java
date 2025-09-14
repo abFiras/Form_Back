@@ -38,7 +38,7 @@ public class FormField {
     @Column(nullable = false)
     private Boolean required = false;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "LONGTEXT")
     private String options; // JSON pour les options (select, radio, checkbox)
 
     @Column(columnDefinition = "TEXT")
@@ -46,6 +46,9 @@ public class FormField {
 
     @Column(columnDefinition = "TEXT")
     private String styling; // JSON pour le style CSS
+    // ✅ NOUVEAU: Champ pour stocker les attributs JSON
+    @Column(columnDefinition = "LONGTEXT")
+    private String attributes;
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "external_list_id")
     private ExternalList externalList;
@@ -57,6 +60,14 @@ public class FormField {
 
     public ExternalList getExternalList() {
         return externalList;
+    }
+
+    public String getAttributes() {
+        return attributes;
+    }
+
+    public void setAttributes(String attributes) {
+        this.attributes = attributes;
     }
 
     public void setExternalList(ExternalList externalList) {

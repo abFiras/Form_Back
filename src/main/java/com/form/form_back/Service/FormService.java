@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -54,7 +55,7 @@ public class FormService {
                 field.setForm(savedForm);
                 field.setType(fieldDTO.getType());
                 field.setLabel(fieldDTO.getLabel());
-                field.setFieldName(fieldDTO.getFieldName()); // ✅ Ajouté fieldName
+                field.setFieldName(fieldDTO.getFieldName());
                 field.setPlaceholder(fieldDTO.getPlaceholder());
                 field.setOrder(fieldDTO.getOrder() != null ? fieldDTO.getOrder() : 0);
                 field.setRequired(fieldDTO.getRequired() != null ? fieldDTO.getRequired() : false);
@@ -67,6 +68,18 @@ public class FormService {
                     } catch (Exception e) {
                         System.err.println("Erreur lors de la sérialisation des options: " + e.getMessage());
                         field.setOptions(null);
+                    }
+                }
+
+                // ✅ NOUVEAU: Gestion des attributs JSON
+                if (fieldDTO.getAttributes() != null && !fieldDTO.getAttributes().isEmpty()) {
+                    try {
+                        String attributesJson = objectMapper.writeValueAsString(fieldDTO.getAttributes());
+                        field.setAttributes(attributesJson);
+                        System.out.println("Attributs sérialisés pour le champ " + field.getFieldName() + ": " + attributesJson);
+                    } catch (Exception e) {
+                        System.err.println("Erreur lors de la sérialisation des attributs: " + e.getMessage());
+                        field.setAttributes(null);
                     }
                 }
 
@@ -98,7 +111,7 @@ public class FormService {
                 field.setForm(form);
                 field.setType(fieldDTO.getType());
                 field.setLabel(fieldDTO.getLabel());
-                field.setFieldName(fieldDTO.getFieldName()); // ✅ Ajouté fieldName
+                field.setFieldName(fieldDTO.getFieldName());
                 field.setPlaceholder(fieldDTO.getPlaceholder());
                 field.setOrder(fieldDTO.getOrder() != null ? fieldDTO.getOrder() : 0);
                 field.setRequired(fieldDTO.getRequired() != null ? fieldDTO.getRequired() : false);
@@ -114,6 +127,18 @@ public class FormService {
                     }
                 }
 
+                // ✅ NOUVEAU: Gestion des attributs JSON pour la mise à jour
+                if (fieldDTO.getAttributes() != null && !fieldDTO.getAttributes().isEmpty()) {
+                    try {
+                        String attributesJson = objectMapper.writeValueAsString(fieldDTO.getAttributes());
+                        field.setAttributes(attributesJson);
+                        System.out.println("Attributs mis à jour pour le champ " + field.getFieldName() + ": " + attributesJson);
+                    } catch (Exception e) {
+                        System.err.println("Erreur lors de la sérialisation des attributs: " + e.getMessage());
+                        field.setAttributes(null);
+                    }
+                }
+
                 field.setValidation(fieldDTO.getValidation());
                 field.setStyling(fieldDTO.getStyling());
 
@@ -125,7 +150,7 @@ public class FormService {
         return formRepository.findByIdWithFields(id);
     }
 
-    // ✅ Méthode pour convertir FormField -> FormFieldDTO avec désérialisation des options
+    // ✅ Méthode corrigée pour convertir FormField -> FormFieldDTO avec désérialisation complète
     public FormFieldDTO convertToFieldDTO(FormField field) {
         FormFieldDTO dto = new FormFieldDTO();
         dto.setId(field.getId());
@@ -152,9 +177,23 @@ public class FormService {
             }
         }
 
+        // ✅ NOUVEAU: Désérialisation des attributs JSON -> Map<String, Object>
+        if (field.getAttributes() != null && !field.getAttributes().trim().isEmpty()) {
+            try {
+                Map<String, Object> attributes = objectMapper.readValue(
+                        field.getAttributes(),
+                        objectMapper.getTypeFactory().constructMapType(Map.class, String.class, Object.class)
+                );
+                dto.setAttributes(attributes);
+                System.out.println("Attributs désérialisés pour le champ " + field.getFieldName() + ": " + attributes);
+            } catch (Exception e) {
+                System.err.println("Erreur lors de la désérialisation des attributs: " + e.getMessage());
+                dto.setAttributes(null);
+            }
+        }
+
         return dto;
     }
-
 
     public void deleteForm(Long id) {
         formRepository.deleteById(id);

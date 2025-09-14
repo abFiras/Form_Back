@@ -1,9 +1,12 @@
 package com.form.form_back.dto;
 
 
+import jakarta.persistence.Column;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.ArrayList;
 
@@ -17,13 +20,31 @@ public class FormDTO {
     private String status;
     private List<FormFieldDTO> fields = new ArrayList<>();
 
+    private LocalDateTime createdAt ;
 
+    private LocalDateTime updatedAt;
     public Long getId() {
         return id;
     }
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     public String getName() {

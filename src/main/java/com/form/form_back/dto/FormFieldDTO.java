@@ -5,6 +5,7 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 @NoArgsConstructor
@@ -21,6 +22,14 @@ public class FormFieldDTO {
     private String validation; // JSON string
     private String styling; // JSON string
 
+    // ✅ NOUVEAU: Champ pour les attributs (pour liste externe, calculs, etc.)
+    private Map<String, Object> attributes;
+
+    // ✅ NOUVEAU: Propriétés spécifiques pour liste externe (pour compatibilité frontend)
+    private Long externalListId;
+    private String externalListDisplayMode;
+    private String externalListUrl;
+    private Map<String, Object> externalListParams;
     public Long getId() {
         return id;
     }
@@ -35,6 +44,46 @@ public class FormFieldDTO {
 
     public void setType(String type) {
         this.type = type;
+    }
+
+    public Map<String, Object> getAttributes() {
+        return attributes;
+    }
+
+    public void setAttributes(Map<String, Object> attributes) {
+        this.attributes = attributes;
+    }
+
+    public Long getExternalListId() {
+        return externalListId;
+    }
+
+    public void setExternalListId(Long externalListId) {
+        this.externalListId = externalListId;
+    }
+
+    public String getExternalListDisplayMode() {
+        return externalListDisplayMode;
+    }
+
+    public void setExternalListDisplayMode(String externalListDisplayMode) {
+        this.externalListDisplayMode = externalListDisplayMode;
+    }
+
+    public String getExternalListUrl() {
+        return externalListUrl;
+    }
+
+    public void setExternalListUrl(String externalListUrl) {
+        this.externalListUrl = externalListUrl;
+    }
+
+    public Map<String, Object> getExternalListParams() {
+        return externalListParams;
+    }
+
+    public void setExternalListParams(Map<String, Object> externalListParams) {
+        this.externalListParams = externalListParams;
     }
 
     public String getFieldName() {
