@@ -1,5 +1,7 @@
 package com.form.form_back.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import jakarta.annotation.Resource;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -9,6 +11,7 @@ import lombok.*;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 @Entity
 @Data
@@ -58,11 +61,26 @@ public class Utilisateur implements Serializable {
     private String resetPasswordToken;
     private Date resetPasswordExpiry;
 
+
+    // Relation avec les groupes - Many-to-Many
+    @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(name = "user_groups",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "group_id"))
+    @JsonIgnoreProperties({"users", "hibernateLazyInitializer", "handler"})
+    private Set<Group> groups = new HashSet<>();
+
+    // Groupe assigné principal
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "assigned_group_id")
+    @JsonIgnoreProperties({"users", "hibernateLazyInitializer", "handler"})
+    private Group assignedGroup;
     public Utilisateur(String username, String email, String password) {
         this.username = username;
         this.email = email;
         this.password = password;
     }
+
     public Utilisateur() {
     }
 
@@ -185,4 +203,36 @@ public class Utilisateur implements Serializable {
     public void setResetPasswordExpiry(Date resetPasswordExpiry) {
         this.resetPasswordExpiry = resetPasswordExpiry;
     }
-}
+
+
+    public Set<Group> getGroups() { return groups; }
+    public void setGroups(Set<Group> groups) { this.groups = groups; }
+
+    public Group getAssignedGroup() { return assignedGroup; }
+    public void setAssignedGroup(Group assignedGroup) { this.assignedGroup = assignedGroup; }
+
+
+    // ✅ MÉTHODES UTILITAIRES POUR LES GROUPES
+    public void addGroup(Group group) {
+        this.groups.add(group);
+        group.getUsers().add(this);
+    }
+
+    public void removeGroup(Group group) {
+        this.groups.remove(group);
+        group.getUsers().remove(this);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Utilisateur)) return false;
+        Utilisateur that = (Utilisateur) o;
+        return Objects.equals(id, that.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
+    }

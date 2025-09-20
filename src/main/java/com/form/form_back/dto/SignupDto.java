@@ -20,6 +20,8 @@ public class SignupDto {
     @Email
     private String email;
     private Set<String> role;
+
+    private Long selectedGroupId;
     @NotBlank
     private String password;
 
@@ -85,5 +87,13 @@ public class SignupDto {
 
     public void setNom(String nom) {
         this.nom = nom;
+    }
+
+    public Long getSelectedGroupId() {
+        return selectedGroupId;
+    }
+
+    public void setSelectedGroupId(Long selectedGroupId) {
+        this.selectedGroupId = selectedGroupId;
     }
 }

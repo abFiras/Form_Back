@@ -19,18 +19,61 @@ public class FormSubmission {
 
     @Column(name = "form_id", nullable = false)
     private Long formId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private Utilisateur utilisateur;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String data; // JSON contenant toutes les réponses
+    @Column(name = "status")
+    private String status = "SUBMITTED"; // SUBMITTED, REVIEWED, APPROVED, REJECTED
 
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt = LocalDateTime.now();
+    // ✅ NOUVEAU : Indicateur pour savoir si c'est une copie ou l'original
+    @Column(name = "is_template", nullable = false)
+    private Boolean isTemplate = false; // false = soumission réelle, true = template vide
 
+    // ✅ NOUVEAU : Référence vers le formulaire template original
+    @Column(name = "template_id")
+    private Long templateId;
     private String submitterEmail;
     private String submitterIp;
 
+    public Boolean getIsTemplate() {
+        return isTemplate;
+    }
+
+    public void setIsTemplate(Boolean template) {
+        isTemplate = template;
+    }
+
+    public Long getTemplateId() {
+        return templateId;
+    }
+
+    public void setTemplateId(Long templateId) {
+        this.templateId = templateId;
+    }
+
     public Long getId() {
         return id;
+    }
+
+    public Utilisateur getUtilisateur() {
+        return utilisateur;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public void setUtilisateur(Utilisateur utilisateur) {
+        this.utilisateur = utilisateur;
     }
 
     public void setId(Long id) {

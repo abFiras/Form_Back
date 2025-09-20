@@ -23,6 +23,56 @@ public class FormDTO {
     private LocalDateTime createdAt ;
 
     private LocalDateTime updatedAt;
+    private Long createdBy; // ID du créateur
+
+    // ✅ NOUVEAU : Informations des groupes assignés
+    private List<Long> assignedGroupIds = new ArrayList<>();
+    private List<GroupDTO> assignedGroups = new ArrayList<>();
+
+    // ✅ NOUVEAU : Indicateurs d'accès
+    private Boolean isAccessible; // Si l'utilisateur actuel peut y accéder
+    private Boolean canEdit; // Si l'utilisateur actuel peut l'éditer
+
+    public Long getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Long createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public List<Long> getAssignedGroupIds() {
+        return assignedGroupIds;
+    }
+
+    public void setAssignedGroupIds(List<Long> assignedGroupIds) {
+        this.assignedGroupIds = assignedGroupIds;
+    }
+
+    public List<GroupDTO> getAssignedGroups() {
+        return assignedGroups;
+    }
+
+    public void setAssignedGroups(List<GroupDTO> assignedGroups) {
+        this.assignedGroups = assignedGroups;
+    }
+
+    public Boolean getIsAccessible() {
+        return isAccessible;
+    }
+
+    public void setIsAccessible(Boolean accessible) {
+        isAccessible = accessible;
+    }
+
+    public Boolean getCanEdit() {
+        return canEdit;
+    }
+
+    public void setCanEdit(Boolean canEdit) {
+        this.canEdit = canEdit;
+    }
+
     public Long getId() {
         return id;
     }

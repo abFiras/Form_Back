@@ -11,6 +11,7 @@ import com.form.form_back.Security.UserDetailsImpl;
 import com.form.form_back.Service.EmailService;
 import com.form.form_back.dto.LoginDto;
 import com.form.form_back.dto.SignupDto;
+import com.form.form_back.dto.UserDTO;
 import com.form.form_back.response.JwtResponse;
 import com.form.form_back.response.MessageResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -62,12 +63,13 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Utilisateur non connecté");
         }
 
-        String username = authentication.getName(); // récupère le username du token
+        String username = authentication.getName();
         Utilisateur user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
 
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(new UserDTO(user)); // 🔥 retour propre
     }
+
 
 
     @Operation(description = "signin")
@@ -228,9 +230,14 @@ public class AuthController {
             user.setNom(updates.get("nom"));
         }
 
+        // Enregistrer les modifications dans la base
         userRepository.save(user);
-        return ResponseEntity.ok(user);
+
+        // Créer et renvoyer un DTO sécurisé pour Angular
+        UserDTO dto = new UserDTO(user);
+        return ResponseEntity.ok(dto);
     }
+
 
     @PostMapping("/update-profile-photo")
     public ResponseEntity<?> updateProfilePhoto(Authentication authentication, @RequestBody Map<String, String> request) {

@@ -1,5 +1,6 @@
 package com.form.form_back.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -7,8 +8,10 @@ import lombok.AllArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.Set;
 
 @Entity
 @Table(name = "forms")
@@ -32,6 +35,18 @@ public class Form {
     @JsonManagedReference
     private List<FormField> fields = new ArrayList<>();
 
+    // ✅ NOUVEAU : Groupes assignés au formulaire (Many-to-Many)
+    @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinTable(name = "form_groups",
+            joinColumns = @JoinColumn(name = "form_id"),
+            inverseJoinColumns = @JoinColumn(name = "group_id"))
+    @JsonIgnoreProperties({"users", "hibernateLazyInitializer", "handler"})
+    private Set<Group> assignedGroups = new HashSet<>();
+    // NOUVEAU: Créateur du formulaire
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+
+    private Utilisateur createdBy;
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -43,6 +58,33 @@ public class Form {
         this.updatedAt = LocalDateTime.now();
     }
 
+    public Set<Group> getAssignedGroups() {
+        return assignedGroups;
+    }
+
+    public void setAssignedGroups(Set<Group> assignedGroups) {
+        this.assignedGroups = assignedGroups;
+    }
+
+    // ✅ Méthodes utilitaires pour gérer les groupes
+    public void addGroup(Group group) {
+        this.assignedGroups.add(group);
+    }
+
+    public void removeGroup(Group group) {
+        this.assignedGroups.remove(group);
+    }
+
+    public boolean isAccessibleByUser(Utilisateur user) {
+        if (assignedGroups.isEmpty()) {
+            return true; // Si aucun groupe assigné, accessible à tous
+        }
+
+        // Vérifier si l'utilisateur appartient à au moins un des groupes assignés
+        return assignedGroups.stream()
+                .anyMatch(group -> user.getGroups().contains(group) ||
+                        (user.getAssignedGroup() != null && user.getAssignedGroup().equals(group)));
+    }
     public Long getId() {
         return id;
     }
@@ -97,5 +139,14 @@ public class Form {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+
+    public Utilisateur getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Utilisateur createdBy) {
+        this.createdBy = createdBy;
     }
 }
