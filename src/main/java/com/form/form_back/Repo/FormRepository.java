@@ -34,6 +34,11 @@ public interface FormRepository extends JpaRepository<Form, Long> {
             "ORDER BY f.createdAt DESC")
     List<Form> findAllWithGroupsAndCreator();
 
+    @Query("SELECT f FROM Form f " +
+            "LEFT JOIN FETCH f.assignedGroups " +
+            "LEFT JOIN FETCH f.createdBy " +
+            "WHERE f.id = :formId")
+    Optional<Form> findByIdWithGroupsAndCreator(@Param("formId") Long formId);
     // ✅ Requête corrigée pour findByStatusWithGroups
     @Query("SELECT DISTINCT f FROM Form f " +
             "LEFT JOIN FETCH f.assignedGroups " +

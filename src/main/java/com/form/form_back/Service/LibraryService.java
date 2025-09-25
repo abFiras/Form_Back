@@ -375,6 +375,37 @@ public class LibraryService {
     }
 
     /**
+     * Partage un formulaire vers la bibliothèque (version mise à jour)
+     */
+    public LibraryForm shareFormToLibrary(Long formId, String language, String tags) {
+        Form originalForm = formRepository.findById(formId)
+                .orElseThrow(() -> new RuntimeException("Formulaire non trouvé"));
+
+        // Vérifier si le formulaire n'est pas déjà dans la bibliothèque
+        boolean alreadyExists = libraryFormRepository.existsByOriginalFormId(formId);
+        if (alreadyExists) {
+            throw new RuntimeException("Ce formulaire est déjà présent dans la bibliothèque");
+        }
+
+        LibraryForm libraryForm = new LibraryForm();
+        libraryForm.setOriginalFormId(formId);
+        libraryForm.setName(originalForm.getName());
+        libraryForm.setDescription(originalForm.getSecteur());
+        libraryForm.setOrigin("account"); // Origine depuis compte utilisateur
+        libraryForm.setLanguage(language != null ? language : "fr");
+        libraryForm.setTags(tags);
+        libraryForm.setFieldCount(originalForm.getFields() != null ? originalForm.getFields().size() : 0);
+        libraryForm.setViewCount(0);
+        libraryForm.setDownloadCount(0);
+        libraryForm.setSharedBy(originalForm.getCreatedBy().getUsername());
+        libraryForm.setCreatedBy(originalForm.getCreatedBy().getId());
+        libraryForm.setCreatedAt(LocalDateTime.now());
+        libraryForm.setUpdatedAt(LocalDateTime.now());
+        libraryForm.setIsActive(true);
+
+        return libraryFormRepository.save(libraryForm);
+    }
+    /**
      * Convertit LibraryForm en LibraryFormDTO
      */
     private LibraryFormDTO convertToDTO(LibraryForm form) {
@@ -389,6 +420,7 @@ public class LibraryService {
         dto.setViewCount(form.getViewCount());
         dto.setDownloadCount(form.getDownloadCount());
         dto.setSharedBy(form.getSharedBy());
+        dto.setCreatedBy(form.getCreatedBy());
         dto.setCreatedAt(form.getCreatedAt());
         dto.setUpdatedAt(form.getUpdatedAt());
         dto.setTags(form.getTags());

@@ -62,4 +62,6 @@ public interface FormSubmissionRepository extends JpaRepository<FormSubmission, 
     List<Object[]> getSubmissionStatsByFormId(@Param("formId") Long formId);
 
     void deleteByFormIdAndIsTemplateTrue(Long id);
+
+    List<FormSubmission> findByFormIdAndUtilisateurIdAndIsTemplateFalseOrderBySubmittedAtDesc(Long formId, Long userId);
 }

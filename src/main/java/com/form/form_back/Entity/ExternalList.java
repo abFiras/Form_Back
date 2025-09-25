@@ -29,12 +29,12 @@ public class ExternalList {
     @Column(name = "is_filtered", nullable = false)
     private Boolean isFiltered = false;
 
-    @Column(name = "created_by")
-    private Long createdBy; // ID de l'utilisateur qui a créé la liste
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
-
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private Utilisateur utilisateur;
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
@@ -69,6 +69,30 @@ public class ExternalList {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Boolean getAdvanced() {
+        return isAdvanced;
+    }
+
+    public void setAdvanced(Boolean advanced) {
+        isAdvanced = advanced;
+    }
+
+    public Boolean getFiltered() {
+        return isFiltered;
+    }
+
+    public void setFiltered(Boolean filtered) {
+        isFiltered = filtered;
+    }
+
+    public Utilisateur getUtilisateur() {
+        return utilisateur;
+    }
+
+    public void setUtilisateur(Utilisateur utilisateur) {
+        this.utilisateur = utilisateur;
     }
 
     public String getDescription() {
@@ -111,13 +135,9 @@ public class ExternalList {
         this.isFiltered = isFiltered;
     }
 
-    public Long getCreatedBy() {
-        return createdBy;
-    }
 
-    public void setCreatedBy(Long createdBy) {
-        this.createdBy = createdBy;
-    }
+
+
 
     public LocalDateTime getCreatedAt() {
         return createdAt;

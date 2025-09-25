@@ -12,6 +12,9 @@ public class ExternalListDTO {
     private Boolean isAdvanced;
     private Boolean isFiltered;
     private Long createdBy;
+
+    private String CreatedName;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Integer itemCount;
@@ -41,6 +44,30 @@ public class ExternalListDTO {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public Boolean getAdvanced() {
+        return isAdvanced;
+    }
+
+    public void setAdvanced(Boolean advanced) {
+        isAdvanced = advanced;
+    }
+
+    public Boolean getFiltered() {
+        return isFiltered;
+    }
+
+    public void setFiltered(Boolean filtered) {
+        isFiltered = filtered;
+    }
+
+    public String getCreatedName() {
+        return CreatedName;
+    }
+
+    public void setCreatedName(String createdName) {
+        CreatedName = createdName;
     }
 
     public String getDescription() {

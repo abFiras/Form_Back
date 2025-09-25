@@ -15,7 +15,7 @@ import java.util.List;
 public class FormCreateRequest {
     @NotBlank(message = "Le nom du formulaire est obligatoire")
     private String name;
-
+    private String secteur;
     private String description;
 
     @NotNull(message = "L'ID utilisateur est obligatoire")
@@ -26,6 +26,14 @@ public class FormCreateRequest {
     // ✅ NOUVEAU : Liste des IDs des groupes assignés
     private List<Long> groupIds = new ArrayList<>();
 
+    public String getSecteur() {
+        return secteur;
+    }
+
+    public void setSecteur(String secteur) {
+        this.secteur = secteur;
+    }
+
     public String getName() {
         return name;
     }
@@ -33,6 +41,7 @@ public class FormCreateRequest {
     public void setName(String name) {
         this.name = name;
     }
+
 
     public String getDescription() {
         return description;

@@ -21,7 +21,7 @@ public interface ExternalListRepository extends JpaRepository<ExternalList, Long
     /**
      * Trouve toutes les listes externes créées par un utilisateur
      */
-    List<ExternalList> findByCreatedByOrderByCreatedAtDesc(Long createdBy);
+    List<ExternalList> findByUtilisateurIdOrderByCreatedAtDesc(Long userId);
 
     /**
      * Trouve les listes externes par rubrique
@@ -59,4 +59,20 @@ public interface ExternalListRepository extends JpaRepository<ExternalList, Long
      * Trouve les listes externes filtrées
      */
     List<ExternalList> findByIsFilteredTrueOrderByNameAsc();
+
+    @Query("SELECT CASE WHEN COUNT(el) > 0 THEN true ELSE false END FROM ExternalList el " +
+            "WHERE LOWER(el.name) = LOWER(:name) AND el.utilisateur.id = :userId")
+    boolean existsByNameAndUtilisateurId(@Param("name") String name, @Param("userId") Long userId);
+
+    @Query("SELECT el.id FROM ExternalList el " +
+            "WHERE LOWER(el.name) = LOWER(:name) AND el.utilisateur.id = :userId")
+    Optional<Long> findIdByNameAndUtilisateurId(@Param("name") String name, @Param("userId") Long userId);
+
+    /**
+     * Récupère une liste par nom et utilisateur
+     */
+    @Query("SELECT el FROM ExternalList el " +
+            "WHERE LOWER(el.name) = LOWER(:name) AND el.utilisateur.id = :userId")
+    Optional<ExternalList> findByNameAndUtilisateurId(@Param("name") String name, @Param("userId") Long userId);
+
 }

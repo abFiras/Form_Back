@@ -2,8 +2,10 @@ package com.form.form_back.Service;
 
 import com.form.form_back.Entity.ExternalList;
 import com.form.form_back.Entity.ExternalListItem;
+import com.form.form_back.Entity.Utilisateur;
 import com.form.form_back.Repo.ExternalListRepository;
 import com.form.form_back.Repo.ExternalListItemRepository;
+import com.form.form_back.Repo.UtilisateurRepository;
 import com.form.form_back.dto.CreateExternalListRequest;
 import com.form.form_back.dto.ExternalListDTO;
 
@@ -30,7 +32,8 @@ public class ExternalListService {
 
     @Autowired
     private ExternalListItemRepository externalListItemRepository;
-
+@Autowired
+private UtilisateurRepository utilisateurRepository;
     /**
      * Récupère toutes les listes externes
      */
@@ -45,7 +48,7 @@ public class ExternalListService {
      * Récupère toutes les listes externes créées par un utilisateur
      */
     public List<ExternalListDTO> getExternalListsByUser(Long userId) {
-        return externalListRepository.findByCreatedByOrderByCreatedAtDesc(userId)
+        return externalListRepository.findByUtilisateurIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -72,11 +75,17 @@ public class ExternalListService {
         externalList.setRubrique(request.getRubrique());
         externalList.setIsAdvanced(request.getIsAdvanced());
         externalList.setIsFiltered(request.getIsFiltered());
-        externalList.setCreatedBy(userId);
+        externalList.setCreatedAt(LocalDateTime.now());
+        externalList.setUpdatedAt(LocalDateTime.now());
+
+        // 🔹 Récupérer l'utilisateur et l'associer
+        Utilisateur user = utilisateurRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+        externalList.setUtilisateur(user);
 
         ExternalList savedList = externalListRepository.save(externalList);
 
-        // Ajouter les éléments si fournis
+        // Ajouter les éléments
         if (request.getItems() != null && !request.getItems().isEmpty()) {
             for (int i = 0; i < request.getItems().size(); i++) {
                 ExternalListItemDTO itemDTO = request.getItems().get(i);
@@ -94,6 +103,7 @@ public class ExternalListService {
 
         return convertToDTO(savedList);
     }
+
 
     /**
      * Met à jour une liste externe
@@ -157,7 +167,9 @@ public class ExternalListService {
         externalList.setRubrique(rubrique);
         externalList.setIsAdvanced(false);
         externalList.setIsFiltered(false);
-        externalList.setCreatedBy(userId);
+        Utilisateur user = utilisateurRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur introuvable"));
+        externalList.setUtilisateur(user);
 
         ExternalList savedList = externalListRepository.save(externalList);
 
@@ -248,7 +260,7 @@ public class ExternalListService {
     /**
      * Convertit ExternalList en ExternalListDTO
      */
-    private ExternalListDTO convertToDTO(ExternalList entity) {
+    public ExternalListDTO convertToDTO(ExternalList entity) {
         ExternalListDTO dto = new ExternalListDTO();
         dto.setId(entity.getId());
         dto.setName(entity.getName());
@@ -257,10 +269,12 @@ public class ExternalListService {
         dto.setRubrique(entity.getRubrique());
         dto.setIsAdvanced(entity.getIsAdvanced());
         dto.setIsFiltered(entity.getIsFiltered());
-        dto.setCreatedBy(entity.getCreatedBy());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
-
+        if (entity.getUtilisateur() != null) {
+            dto.setCreatedBy(entity.getUtilisateur().getId());
+            dto.setCreatedName(entity.getUtilisateur().getUsername());
+        }
         // Compter les éléments actifs
         Long itemCount = externalListItemRepository.countActiveItemsByListId(entity.getId());
         dto.setItemCount(itemCount.intValue());

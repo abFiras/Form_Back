@@ -78,4 +78,6 @@ public interface LibraryFormRepository extends JpaRepository<LibraryForm, Long> 
      */
     @Query("SELECT lf.tags FROM LibraryForm lf WHERE lf.isActive = true AND lf.tags IS NOT NULL")
     List<String> findAllTags();
+
+    boolean existsByOriginalFormId(Long formId);
 }

@@ -16,6 +16,9 @@ import java.util.ArrayList;
 public class FormDTO {
     private Long id;
     private String name;
+    private String secteur;
+
+
     private String description;
     private String status;
     private List<FormFieldDTO> fields = new ArrayList<>();
@@ -32,6 +35,15 @@ public class FormDTO {
     // ✅ NOUVEAU : Indicateurs d'accès
     private Boolean isAccessible; // Si l'utilisateur actuel peut y accéder
     private Boolean canEdit; // Si l'utilisateur actuel peut l'éditer
+    private Boolean isInLibrary;
+
+    public Boolean getIsInLibrary() {
+        return isInLibrary;
+    }
+
+    public void setIsInLibrary(Boolean inLibrary) {
+        isInLibrary = inLibrary;
+    }
 
     public Long getCreatedBy() {
         return createdBy;
@@ -81,6 +93,14 @@ public class FormDTO {
         this.id = id;
     }
 
+    public Boolean getAccessible() {
+        return isAccessible;
+    }
+
+    public void setAccessible(Boolean accessible) {
+        isAccessible = accessible;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -127,5 +147,13 @@ public class FormDTO {
 
     public void setFields(List<FormFieldDTO> fields) {
         this.fields = fields;
+    }
+
+    public String getSecteur() {
+        return secteur;
+    }
+
+    public void setSecteur(String secteur) {
+        this.secteur = secteur;
     }
 }

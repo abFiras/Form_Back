@@ -21,6 +21,8 @@ public class FormService {
 
     @Autowired
     private FormRepository formRepository;
+    @Autowired
+    private LibraryFormRepository libraryFormRepository;
 
     @Autowired
     private FormFieldRepository formFieldRepository;
@@ -36,6 +38,8 @@ public class FormService {
 
     @Autowired
     private FileStorageService fileStorageService;
+    @Autowired
+    private FormHistoryService formHistoryService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private static final Logger logger = LoggerFactory.getLogger(FormService.class);
@@ -52,6 +56,7 @@ public class FormService {
         // ✅ ÉTAPE 1 : Créer le formulaire de base
         Form form = new Form();
         form.setName(request.getName());
+        form.setSecteur(request.getSecteur());
         form.setDescription(request.getDescription());
         form.setCreatedBy(creator);
         form.setStatus("DRAFT");
@@ -100,6 +105,14 @@ public class FormService {
                 savedForm.getAssignedGroups().size(),
                 request.getFields() != null ? request.getFields().size() : 0);
 
+        formHistoryService.recordFormAction(
+                savedForm,
+                "CREATED",
+                "Formulaire créé avec " + (request.getFields() != null ? request.getFields().size() : 0) + " champs",
+                creator,
+                null, // IP address - à passer depuis le contrôleur
+                null  // User agent - à passer depuis le contrôleur
+        );
         return convertToDTO(savedForm, creator.getId());
     }
 
@@ -153,6 +166,16 @@ public class FormService {
         logger.info("Formulaire publié: {} avec {} groupes assignés",
                 savedForm.getName(), savedForm.getAssignedGroups().size());
 
+        /////////////
+        Utilisateur user = userRepository.findById(userId).orElse(null);
+        formHistoryService.recordFormAction(
+                savedForm,
+                "PUBLISHED",
+                "Formulaire publié et accessible aux groupes assignés",
+                user,
+                null, null
+        );
+        /////////
         return convertToDTO(savedForm, userId);
     }
 
@@ -236,18 +259,22 @@ public class FormService {
                 .orElseThrow(() -> new RuntimeException("Formulaire non trouvé"));
 
         // Vérifier que l'utilisateur peut voir les soumissions (créateur ou admin)
-        if (!form.getCreatedBy().getId().equals(userId)) {
-            throw new RuntimeException("Seul le créateur peut voir les soumissions");
+        List<FormSubmission> submissions;
+
+        if (form.getCreatedBy().getId().equals(userId)) {
+            // ✅ Créateur → voir toutes les soumissions réelles
+            submissions = formSubmissionRepository
+                    .findByFormIdAndIsTemplateFalseOrderBySubmittedAtDesc(formId);
+        } else {
+            // ✅ Utilisateur → voir uniquement ses propres soumissions
+            submissions = formSubmissionRepository
+                    .findByFormIdAndUtilisateurIdAndIsTemplateFalseOrderBySubmittedAtDesc(formId, userId);
         }
 
-        // ✅ Récupérer UNIQUEMENT les vraies soumissions (isTemplate = false)
-        List<FormSubmission> realSubmissions = formSubmissionRepository
-                .findByFormIdAndIsTemplateFalseOrderBySubmittedAtDesc(formId);
-
         logger.info("Trouvé {} vraies soumissions pour le formulaire {} (templates exclues)",
-                realSubmissions.size(), form.getName());
+                submissions.size(), form.getName());
 
-        return realSubmissions.stream()
+        return submissions.stream()
                 .map(this::convertToSubmissionResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -296,6 +323,7 @@ public class FormService {
 
         // ✅ ÉTAPE 1 : Mettre à jour les informations de base
         form.setName(request.getName());
+        form.setSecteur(request.getSecteur());
         form.setDescription(request.getDescription());
         if (request.getStatus() != null) {
             form.setStatus(request.getStatus());
@@ -354,7 +382,18 @@ public class FormService {
             logger.error("Erreur lors de la mise à jour des champs: {}", e.getMessage(), e);
             throw new RuntimeException("Erreur lors de la mise à jour des champs: " + e.getMessage());
         }
-
+///////
+        Map<String, Object> changes = new HashMap<>();
+        if (!form.getName().equals(request.getName())) {
+            changes.put("name", Map.of("old", form.getName(), "new", request.getName()));
+        }
+        if (!form.getSecteur().equals(request.getSecteur())) {
+            changes.put("secteur", Map.of("old", form.getSecteur(), "new", request.getSecteur()));
+        }
+        if (!Objects.equals(form.getDescription(), request.getDescription())) {
+            changes.put("description", Map.of("old", form.getDescription(), "new", request.getDescription()));
+        }
+        /////////
         // ✅ ÉTAPE 4 : Sauvegarder le formulaire final
         Form savedForm = formRepository.save(form);
 
@@ -362,7 +401,23 @@ public class FormService {
                 savedForm.getName(),
                 savedForm.getAssignedGroups().size(),
                 request.getFields() != null ? request.getFields().size() : 0);
+/////////
+        String actionDescription = "Formulaire mis à jour";
+        if (request.getFields() != null) {
+            actionDescription += " - " + request.getFields().size() + " champs";
+        }
 
+        Utilisateur user = userRepository.findById(userId).orElse(null);
+        formHistoryService.recordFormActionWithChanges(
+                savedForm,
+                "UPDATED",
+                actionDescription,
+                user,
+                changes,
+                null, // IP à passer depuis le contrôleur
+                null  // User agent à passer depuis le contrôleur
+        );
+        /////////
         return convertToDTO(savedForm, userId);
     }
 
@@ -598,7 +653,35 @@ public class FormService {
 
         return dto;
     }
+    // ✅ AJOUT dans FormService.java
+    public FormSubmissionResponseDTO getSubmissionById(Long formId, Long submissionId, Long userId) {
+        // Vérifier l'accès au formulaire
+        FormDTO form = getFormById(formId, userId);
 
+        // Récupérer la soumission
+        FormSubmission submission = formSubmissionRepository.findById(submissionId)
+                .orElseThrow(() -> new RuntimeException("Soumission non trouvée"));
+
+        // Vérifier que la soumission appartient bien au formulaire
+        if (!submission.getFormId().equals(formId)) {
+            throw new RuntimeException("Cette soumission n'appartient pas au formulaire spécifié");
+        }
+
+        // Vérifier les droits d'accès
+        if (!form.getCanEdit() && !submission.getUtilisateur().getId().equals(userId)) {
+            throw new RuntimeException("Accès non autorisé à cette soumission");
+        }
+
+        // Exclure les templates
+        if (submission.getIsTemplate()) {
+            throw new RuntimeException("Impossible de télécharger une template");
+        }
+
+        logger.info("Soumission {} récupérée pour téléchargement par l'utilisateur {}",
+                submissionId, userId);
+
+        return convertToSubmissionResponseDTO(submission);
+    }
     // ✅ MÉTHODE ALTERNATIVE: Si le problème persiste, utiliser cette approche encore plus sûre
 
 
@@ -607,6 +690,7 @@ public class FormService {
         FormDTO dto = new FormDTO();
         dto.setId(form.getId());
         dto.setName(form.getName());
+        dto.setSecteur(form.getSecteur());
         dto.setDescription(form.getDescription());
         dto.setStatus(form.getStatus());
         dto.setCreatedAt(form.getCreatedAt());
@@ -666,6 +750,10 @@ public class FormService {
             }
         } else {
             dto.setIsAccessible(true);
+        }
+        if (form.getId() != null) {
+            boolean isInLibrary = libraryFormRepository.existsByOriginalFormId(form.getId());
+            dto.setIsInLibrary(isInLibrary);
         }
 
         return dto;

@@ -25,6 +25,8 @@ public class Form {
 
     @Column(nullable = false)
     private String name;
+    @Column(nullable = false)
+    private String secteur;
 
     private String description;
 
@@ -85,6 +87,15 @@ public class Form {
                 .anyMatch(group -> user.getGroups().contains(group) ||
                         (user.getAssignedGroup() != null && user.getAssignedGroup().equals(group)));
     }
+
+    public String getSecteur() {
+        return secteur;
+    }
+
+    public void setSecteur(String secteur) {
+        this.secteur = secteur;
+    }
+
     public Long getId() {
         return id;
     }

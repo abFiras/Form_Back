@@ -1,13 +1,15 @@
 // FormController.java - Version mise à jour avec FormSubmissionService
 package com.form.form_back.Controller;
 
-import com.form.form_back.Service.AuthService;
-import com.form.form_back.Service.FormService;
-import com.form.form_back.Service.FormSubmissionService;
+import com.form.form_back.Entity.LibraryForm;
+import com.form.form_back.Service.*;
 import com.form.form_back.dto.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -22,13 +24,16 @@ public class FormController {
 
     @Autowired
     private FormService formService;
+    @Autowired
+    private LibraryService libraryService;
 
     @Autowired
     private FormSubmissionService formSubmissionService; // ✅ Nouveau service dédié
 
     @Autowired
     private AuthService authService;
-
+    @Autowired
+    private WordGeneratorService wordGeneratorService;
     private static final Logger logger = LoggerFactory.getLogger(FormController.class);
 
     // ✅ CRÉER UN FORMULAIRE
@@ -501,6 +506,151 @@ public class FormController {
         } else {
             return xForwardedForHeader.split(",")[0].trim();
         }
+    }
+
+
+    @GetMapping("/forms/{id}/download/word")
+    public ResponseEntity<byte[]> downloadFormAsWord(
+            @PathVariable Long id,
+            @RequestParam Long userId // 👈 ajouter le userId en paramètre
+    ) {
+        try {
+            // 🔒 Récupérer le formulaire avec vérification d'accès
+            FormDTO form = formService.getFormById(id, userId);
+            // Générer le document Word
+            byte[] wordDocument = wordGeneratorService.generateFormDocument(form);
+
+            // Préparer la réponse
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+            headers.setContentDispositionFormData("attachment", form.getName() + "_formulaire.docx");
+            headers.setContentLength(wordDocument.length);
+
+            return new ResponseEntity<>(wordDocument, headers, HttpStatus.OK);
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    // ✅ CORRECTION : Endpoint pour télécharger une soumission en Word
+    @GetMapping("/{formId}/submissions/{submissionId}/download/word")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<byte[]> downloadSubmissionAsWord(
+            @PathVariable Long formId,
+            @PathVariable Long submissionId) {
+        try {
+            // Validation des IDs
+            validateFormId(formId, "téléchargement soumission Word");
+            if (submissionId == null || submissionId <= 0) {
+                throw new IllegalArgumentException("ID de soumission invalide: " + submissionId);
+            }
+
+            Long currentUserId = authService.getCurrentUserId();
+
+            // Récupérer le formulaire avec vérification d'accès
+            FormDTO form = formService.getFormById(formId, currentUserId);
+
+            // Récupérer la soumission spécifique
+            FormSubmissionResponseDTO submission = formService.getSubmissionById(formId, submissionId, currentUserId);
+
+            // Générer le document Word avec les données de soumission
+            byte[] wordDocument = wordGeneratorService.generateSubmissionDocument(form, submission);
+
+            // Préparer la réponse
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+            headers.setContentDispositionFormData("attachment",
+                    sanitizeFileName(form.getName()) + "_soumission_" + submissionId + ".docx");
+            headers.setContentLength(wordDocument.length);
+
+            logger.info("Soumission {} du formulaire {} téléchargée en Word par l'utilisateur {}",
+                    submissionId, formId, currentUserId);
+
+            return new ResponseEntity<>(wordDocument, headers, HttpStatus.OK);
+
+        } catch (Exception e) {
+            logger.error("Erreur téléchargement Word soumission {} du formulaire {}: {}",
+                    submissionId, formId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
+        }
+    }
+    // ✅ AJOUT : Méthode utilitaire pour nettoyer les noms de fichiers
+    private String sanitizeFileName(String fileName) {
+        if (fileName == null || fileName.trim().isEmpty()) {
+            return "formulaire";
+        }
+        return fileName
+                .replaceAll("[^a-zA-Z0-9\\-_\\s]", "") // Supprimer caractères spéciaux
+                .replaceAll("\\s+", "_") // Remplacer espaces par underscores
+                .substring(0, Math.min(fileName.length(), 50)); // Limiter la longueur
+    }
+
+
+    // ✅ PARTAGER UN FORMULAIRE VERS LA BIBLIOTHÈQUE
+    @PostMapping("/{id}/share-to-library")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<LibraryFormDTO>> shareFormToLibrary(
+            @PathVariable Long id,
+            @RequestBody ShareToLibraryRequest request) {
+        try {
+            Long currentUserId = authService.getCurrentUserId();
+
+            // Vérifier que le formulaire existe et est publié
+            FormDTO form = formService.getFormById(id, currentUserId);
+
+            if (!form.getCanEdit()) {
+                throw new RuntimeException("Seul le créateur peut partager ce formulaire");
+            }
+
+            if (!"PUBLISHED".equals(form.getStatus())) {
+                throw new RuntimeException("Seuls les formulaires publiés peuvent être partagés");
+            }
+
+            LibraryForm libraryForm = libraryService.shareFormToLibrary(
+                    id,
+                    request.getLanguage(),
+                    request.getTags()
+            );
+
+            LibraryFormDTO dto = convertToLibraryFormDTO(libraryForm);
+
+            logger.info("Formulaire {} partagé vers la bibliothèque par l'utilisateur {}",
+                    id, currentUserId);
+
+            return ResponseEntity.ok(new ApiResponse<>(
+                    "Formulaire partagé avec succès dans la bibliothèque! " +
+                            "Il sera maintenant accessible aux autres utilisateurs.",
+                    dto,
+                    true
+            ));
+        } catch (Exception e) {
+            logger.error("Erreur partage formulaire vers bibliothèque {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(new ApiResponse<>(
+                    "Erreur lors du partage: " + e.getMessage(),
+                    null,
+                    false
+            ));
+        }
+    }
+
+    private LibraryFormDTO convertToLibraryFormDTO(LibraryForm libraryForm) {
+        LibraryFormDTO dto = new LibraryFormDTO();
+        dto.setId(libraryForm.getId());
+        dto.setOriginalFormId(libraryForm.getOriginalFormId());
+        dto.setName(libraryForm.getName());
+        dto.setDescription(libraryForm.getDescription());
+        dto.setOrigin(libraryForm.getOrigin());
+        dto.setLanguage(libraryForm.getLanguage());
+        dto.setFieldCount(libraryForm.getFieldCount());
+        dto.setViewCount(libraryForm.getViewCount());
+        dto.setDownloadCount(libraryForm.getDownloadCount());
+        dto.setSharedBy(libraryForm.getSharedBy());
+        dto.setCreatedAt(libraryForm.getCreatedAt());
+        dto.setUpdatedAt(libraryForm.getUpdatedAt());
+        dto.setTags(libraryForm.getTags());
+        return dto;
     }
 }
 

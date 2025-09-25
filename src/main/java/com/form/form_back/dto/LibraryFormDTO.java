@@ -14,6 +14,8 @@ public class LibraryFormDTO {
     private Integer viewCount;
     private Integer downloadCount;
     private String sharedBy;
+    private Long createdBy; // ID du créateur
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String tags;
@@ -21,23 +23,13 @@ public class LibraryFormDTO {
     // Constructeurs
     public LibraryFormDTO() {}
 
-    public LibraryFormDTO(Long id, Long originalFormId, String name, String description,
-                          String origin, String language, Integer fieldCount,
-                          Integer viewCount, Integer downloadCount, String sharedBy,
-                          LocalDateTime createdAt, LocalDateTime updatedAt, String tags) {
-        this.id = id;
-        this.originalFormId = originalFormId;
-        this.name = name;
-        this.description = description;
-        this.origin = origin;
-        this.language = language;
-        this.fieldCount = fieldCount;
-        this.viewCount = viewCount;
-        this.downloadCount = downloadCount;
-        this.sharedBy = sharedBy;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-        this.tags = tags;
+
+    public Long getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Long createdBy) {
+        this.createdBy = createdBy;
     }
 
     // Getters et Setters
