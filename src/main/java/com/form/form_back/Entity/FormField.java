@@ -1,10 +1,15 @@
 package com.form.form_back.Entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonBackReference;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Entity
 @Table(name = "form_fields")
@@ -57,7 +62,31 @@ public class FormField {
     @Column(name = "use_external_list")
     private Boolean useExternalList = false;
 
+    // Dans FormField.java
+    @JsonIgnore
+    public Map<String, Object> getAttributesMap() {
+        if (attributes == null || attributes.isEmpty()) {
+            return new HashMap<>();
+        }
 
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.readValue(attributes,
+                    mapper.getTypeFactory().constructMapType(Map.class, String.class, Object.class));
+        } catch (Exception e) {
+            return new HashMap<>();
+        }
+    }
+
+    @JsonIgnore
+    public void setAttributesMap(Map<String, Object> attributesMap) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            this.attributes = mapper.writeValueAsString(attributesMap);
+        } catch (Exception e) {
+            this.attributes = "{}";
+        }
+    }
     public ExternalList getExternalList() {
         return externalList;
     }

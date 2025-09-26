@@ -1,6 +1,7 @@
 // FormController.java - Version mise à jour avec FormSubmissionService
 package com.form.form_back.Controller;
 
+import com.form.form_back.Entity.FormField;
 import com.form.form_back.Entity.LibraryForm;
 import com.form.form_back.Service.*;
 import com.form.form_back.dto.*;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/forms")
@@ -334,7 +336,34 @@ public class FormController {
             ));
         }
     }
+    @PutMapping("/form-fields/{fieldId}/attributes")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<String>> updateFieldAttributes(
+            @PathVariable Long fieldId,
+            @RequestBody Map<String, Object> request) {
+        try {
+            Long currentUserId = authService.getCurrentUserId();
 
+            @SuppressWarnings("unchecked")
+            Map<String, Object> attributes = (Map<String, Object>) request.get("attributes");
+
+            formService.updateFieldAttributes(fieldId, attributes, currentUserId);
+
+            return ResponseEntity.ok(new ApiResponse<>(
+                    "Attributes sauvegardés avec succès",
+                    "OK",
+                    true
+            ));
+
+        } catch (Exception e) {
+            logger.error("Erreur sauvegarde attributes pour champ {}: {}", fieldId, e.getMessage());
+            return ResponseEntity.badRequest().body(new ApiResponse<>(
+                    "Erreur: " + e.getMessage(),
+                    null,
+                    false
+            ));
+        }
+    }
     // ✅ SOUMISSION ANONYME (pour formulaires publics)
     @PostMapping("/{id}/submit-anonymous")
     public ResponseEntity<ApiResponse<FormSubmissionResponseDTO>> submitFormAnonymous(

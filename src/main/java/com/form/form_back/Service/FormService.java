@@ -525,15 +525,51 @@ public class FormService {
         }
 
         // Mettre à jour les attributs
+        // ✅ CORRECTION : Mettre à jour les attributs avec logging
         if (dto.getAttributes() != null && !dto.getAttributes().isEmpty()) {
             try {
-                existingField.setAttributes(objectMapper.writeValueAsString(dto.getAttributes()));
+                String attributesJson = objectMapper.writeValueAsString(dto.getAttributes());
+                existingField.setAttributes(attributesJson);
+                logger.debug("Attributes mis à jour pour champ {}: {}",
+                        dto.getFieldName(), dto.getAttributes().keySet());
             } catch (JsonProcessingException e) {
                 logger.error("Erreur sérialisation attributs: {}", e.getMessage());
-                existingField.setAttributes(null);
+                existingField.setAttributes("{}");
             }
         } else {
             existingField.setAttributes(null);
+        }
+    }
+    public void updateFieldAttributes(Long fieldId, Map<String, Object> attributes, Long currentUserId) {
+        // Récupérer le champ
+        FormField field = formFieldRepository.findById(fieldId)
+                .orElseThrow(() -> new RuntimeException("Champ non trouvé"));
+
+        // Vérifier que l'utilisateur peut modifier ce champ
+        if (!field.getForm().getCreatedBy().getId().equals(currentUserId)) {
+            throw new RuntimeException("Non autorisé à modifier ce champ");
+        }
+
+        // Sauvegarder les attributes
+        if (attributes != null && !attributes.isEmpty()) {
+            try {
+                String attributesJson = objectMapper.writeValueAsString(attributes);
+                field.setAttributes(attributesJson);
+                formFieldRepository.save(field);
+
+                logger.info("Attributes mis à jour pour le champ {}: {}",
+                        fieldId, attributes.keySet());
+            } catch (JsonProcessingException e) {
+                logger.error("Erreur sérialisation attributes pour champ {}: {}",
+                        fieldId, e.getMessage());
+                throw new RuntimeException("Erreur lors de la sauvegarde des attributes: " + e.getMessage());
+            }
+        } else {
+            // Si attributes est vide, on peut soit le laisser tel quel, soit le vider
+            field.setAttributes("{}");
+            formFieldRepository.save(field);
+
+            logger.info("Attributes vidés pour le champ {}", fieldId);
         }
     }
 
@@ -683,7 +719,20 @@ public class FormService {
         return convertToSubmissionResponseDTO(submission);
     }
     // ✅ MÉTHODE ALTERNATIVE: Si le problème persiste, utiliser cette approche encore plus sûre
-
+// Dans la méthode qui sauvegarde/met à jour les champs du formulaire
+    private void saveFieldAttributes(FormField field, FormFieldDTO fieldDTO) {
+        if (fieldDTO.getAttributes() != null && !fieldDTO.getAttributes().isEmpty()) {
+            try {
+                // Convertir les attributes du DTO en JSON string
+                String attributesJson = objectMapper.writeValueAsString(fieldDTO.getAttributes());
+                field.setAttributes(attributesJson);
+            } catch (JsonProcessingException e) {
+                logger.error("Erreur sérialisation attributes pour champ {}: {}",
+                        fieldDTO.getFieldName(), e.getMessage());
+                field.setAttributes("{}");
+            }
+        }
+    }
 
     // ✅ CORRECTION du convertToDTO pour éviter les doublons
     private FormDTO convertToDTO(Form form, Long currentUserId) {
@@ -987,10 +1036,13 @@ public class FormService {
         // Sérialiser les attributs
         if (dto.getAttributes() != null && !dto.getAttributes().isEmpty()) {
             try {
-                field.setAttributes(objectMapper.writeValueAsString(dto.getAttributes()));
+                String attributesJson = objectMapper.writeValueAsString(dto.getAttributes());
+                field.setAttributes(attributesJson);
+                logger.debug("Attributes sauvegardés pour champ {}: {}",
+                        dto.getFieldName(), dto.getAttributes().keySet());
             } catch (JsonProcessingException e) {
                 logger.error("Erreur sérialisation attributs: {}", e.getMessage());
-                field.setAttributes(null);
+                field.setAttributes("{}");
             }
         }
 

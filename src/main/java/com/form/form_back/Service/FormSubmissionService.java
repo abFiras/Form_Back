@@ -173,13 +173,25 @@ public class FormSubmissionService {
     /**
      * ✅ TRAITER LA VALEUR d'un champ selon son type
      */
+    /**
+     * ✅ TRAITER LA VALEUR d'un champ selon son type - VERSION CORRIGÉE
+     */
+    /**
+     * ✅ TRAITER LA VALEUR d'un champ selon son type - VERSION CORRIGÉE
+     */
     private Object processFieldValue(FormField field, Object value) {
+        if (value == null) {
+            return null;
+        }
+
         switch (field.getType()) {
+            // Champs avec traitement spécial
             case "signature":
                 return processSignatureField(field, value);
 
             case "file":
             case "attachment":
+            case "file-fixed":
                 return processFileField(field, value);
 
             case "drawing":
@@ -189,21 +201,354 @@ public class FormSubmissionService {
                 return processGeolocationField(field, value);
 
             case "datetime":
+            case "date":
                 return processDateTimeField(field, value);
 
             case "number":
             case "slider":
+            case "calculation":
                 return processNumberField(field, value);
 
             case "checkbox":
-                return processBooleanField(field, value);
+                // ✅ CORRECTION: Gérer les checkboxes multiples ET simples
+                return processCheckboxField(field, value);
 
             case "external-list":
                 return processExternalListField(field, value);
 
+            // ✅ NOUVEAUX TYPES - Champs de sélection
+            case "radio":
+            case "select":
+                return processSelectionField(field, value);
+
+            // ✅ NOUVEAUX TYPES - Champs complexes
+            case "address":
+                return processAddressField(field, value);
+
+            case "contact":
+                return processContactField(field, value);
+
+            case "reference":
+                return processReferenceField(field, value);
+
+            case "audio":
+                return processAudioField(field, value);
+
+            case "barcode":
+            case "nfc":
+                return processCodeField(field, value);
+
+            case "table":
+                return processTableField(field, value);
+
+            case "schema":
+                return processSchemaField(field, value);
+
+            // ✅ Champs informatifs (pas de validation particulière)
+            case "separator":
+            case "fixed-text":
+            case "image":
+                return processInformationalField(field, value);
+
+            // ✅ Champs textuels
+            case "text":
+            case "textarea":
+            case "email":
             default:
                 return processTextualField(field, value);
         }
+    }
+    private Object processCheckboxField(FormField field, Object value) {
+        // ✅ DEBUG : Ajoutez ces logs
+        logger.debug("Processing checkbox field: {}, value: {}, type: {}",
+                field.getFieldName(), value, value != null ? value.getClass().getName() : "null");
+
+        // Si c'est un array (checkboxes multiples)
+        if (value instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<Object> listValue = (List<Object>) value;
+
+            // ✅ DEBUG : Log de la liste
+            logger.debug("List size: {}, contents: {}", listValue.size(), listValue);
+
+            List<String> result = listValue.stream()
+                    .map(item -> item != null ? item.toString().trim() : null)
+                    .filter(item -> item != null && !item.isEmpty())
+                    .collect(Collectors.toList());
+
+            // ✅ DEBUG : Log du résultat
+            logger.debug("Filtered result: {}", result);
+
+            return result;
+        }
+
+        // ✅ Vérifier si le champ a des options pour déterminer le comportement
+        if (field.getOptions() != null && !field.getOptions().isEmpty()) {
+            // Checkbox multiple - retourner array même si vide
+            return new ArrayList<>();
+        } else {
+            // Checkbox simple - retourner boolean
+            return processBooleanField(field, value);
+        }
+    }
+    private Object processSelectionField(FormField field, Object value) {
+        if (value instanceof String) {
+            return ((String) value).trim();
+        } else if (value instanceof List) {
+            // Pour les checkboxes multiples
+            @SuppressWarnings("unchecked")
+            List<Object> listValue = (List<Object>) value;
+            return listValue.stream()
+                    .map(item -> item != null ? item.toString().trim() : null)
+                    .filter(item -> item != null && !item.isEmpty())
+                    .collect(Collectors.toList());
+        }
+        return null;
+    }
+    /**
+     * ✅ TRAITER LES ADRESSES
+     */
+    private Map<String, Object> processAddressField(FormField field, Object value) {
+        if (value instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> addressData = (Map<String, Object>) value;
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("street", sanitizeString((String) addressData.get("street")));
+            result.put("city", sanitizeString((String) addressData.get("city")));
+            result.put("postalCode", sanitizeString((String) addressData.get("postalCode")));
+            result.put("country", sanitizeString((String) addressData.get("country")));
+            result.put("latitude", addressData.get("latitude"));
+            result.put("longitude", addressData.get("longitude"));
+
+            return result;
+        } else if (value instanceof String) {
+            // Si c'est une chaîne simple, la traiter comme adresse textuelle
+            Map<String, Object> result = new HashMap<>();
+            result.put("fullAddress", sanitizeString((String) value));
+            return result;
+        }
+        return null;
+    }
+
+    /**
+     * ✅ TRAITER LES CONTACTS
+     */
+    private Map<String, Object> processContactField(FormField field, Object value) {
+        if (value instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> contactData = (Map<String, Object>) value;
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("name", sanitizeString((String) contactData.get("name")));
+            result.put("phone", sanitizeString((String) contactData.get("phone")));
+            result.put("email", sanitizeString((String) contactData.get("email")));
+            result.put("company", sanitizeString((String) contactData.get("company")));
+
+            // Valider l'email si présent
+            String email = (String) result.get("email");
+            if (email != null && !email.isEmpty() && !isValidEmail(email)) {
+                logger.warn("Email invalide dans contact: {}", email);
+                result.put("email", null);
+            }
+
+            return result;
+        }
+        return null;
+    }
+
+    /**
+     * ✅ TRAITER LES RÉFÉRENCES
+     */
+    private Map<String, Object> processReferenceField(FormField field, Object value) {
+        if (value instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> refData = (Map<String, Object>) value;
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("id", refData.get("id"));
+            result.put("label", sanitizeString((String) refData.get("label")));
+            result.put("type", sanitizeString((String) refData.get("type")));
+            result.put("url", sanitizeString((String) refData.get("url")));
+
+            return result;
+        } else if (value instanceof String) {
+            // Référence simple sous forme de texte
+            Map<String, Object> result = new HashMap<>();
+            result.put("value", sanitizeString((String) value));
+            return result;
+        }
+        return null;
+    }
+
+    /**
+     * ✅ TRAITER LES FICHIERS AUDIO
+     */
+    private Map<String, Object> processAudioField(FormField field, Object value) {
+        if (!(value instanceof String) || !((String) value).startsWith("data:audio/")) {
+            return null;
+        }
+
+        try {
+            String audioData = (String) value;
+            String filename = field.getFieldName() + "_" + System.currentTimeMillis();
+            String savedUrl = fileStorageService.saveBase64File(audioData, "audio", filename);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("url", savedUrl);
+            result.put("type", "audio");
+            result.put("originalSize", audioData.length());
+            result.put("savedAt", LocalDateTime.now().toString());
+
+            logger.info("Fichier audio sauvegardé: {}", savedUrl);
+            return result;
+
+        } catch (Exception e) {
+            logger.error("Erreur sauvegarde audio: {}", e.getMessage());
+            throw new RuntimeException("Erreur lors de la sauvegarde du fichier audio");
+        }
+    }
+
+    /**
+     * ✅ TRAITER LES CODES (barcode, nfc)
+     */
+    private Map<String, Object> processCodeField(FormField field, Object value) {
+        if (value instanceof String) {
+            String code = sanitizeString((String) value);
+
+            Map<String, Object> result = new HashMap<>();
+            result.put("code", code);
+            result.put("type", field.getType());
+            result.put("scannedAt", LocalDateTime.now().toString());
+
+            return result;
+        }
+        return null;
+    }
+
+    /**
+     * ✅ TRAITER LES TABLEAUX
+     */
+    private List<Map<String, Object>> processTableField(FormField field, Object value) {
+        if (value instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<Object> tableData = (List<Object>) value;
+
+            List<Map<String, Object>> result = new ArrayList<>();
+
+            for (Object row : tableData) {
+                if (row instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> rowData = (Map<String, Object>) row;
+
+                    Map<String, Object> processedRow = new HashMap<>();
+                    rowData.forEach((key, val) -> {
+                        if (val instanceof String) {
+                            processedRow.put(key, sanitizeString((String) val));
+                        } else {
+                            processedRow.put(key, val);
+                        }
+                    });
+
+                    result.add(processedRow);
+                }
+            }
+
+            return result;
+        }
+        return null;
+    }
+
+    /**
+     * ✅ TRAITER LES SCHÉMAS/STRUCTURES
+     */
+    private Map<String, Object> processSchemaField(FormField field, Object value) {
+        if (value instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> schemaData = (Map<String, Object>) value;
+
+            // Nettoyer récursivement les données du schéma
+            return cleanMapData(schemaData);
+        }
+        return null;
+    }
+
+    /**
+     * ✅ TRAITER LES CHAMPS INFORMATIFS (pas de données à sauvegarder)
+     */
+    private Object processInformationalField(FormField field, Object value) {
+        if (value != null) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("type", field.getType());
+            result.put("acknowledged", true);
+            result.put("timestamp", LocalDateTime.now().toString());
+
+            // ✅ CORRECTION pour tous les champs informatifs
+            if (field.getAttributes() != null) {
+                try {
+                    Map<String, Object> attributes = objectMapper.readValue(
+                            field.getAttributes(),
+                            objectMapper.getTypeFactory().constructMapType(Map.class, String.class, Object.class)
+                    );
+
+                    switch (field.getType()) {
+                        case "image":
+                            String imageUrl = (String) attributes.get("imageUrl");
+                            if (imageUrl != null && !imageUrl.isEmpty()) {
+                                result.put("imageUrl", imageUrl);
+                                result.put("fileName", attributes.get("fileName"));
+                                result.put("fileType", attributes.get("fileType"));
+                            }
+                            break;
+
+                        case "file-fixed":
+                            String fileUrl = (String) attributes.get("fileUrl");
+                            if (fileUrl != null && !fileUrl.isEmpty()) {
+                                result.put("fileUrl", fileUrl);
+                                result.put("fileName", attributes.get("fileName"));
+                                result.put("fileType", attributes.get("fileType"));
+                            }
+                            break;
+
+                        case "fixed-text":
+                            String content = (String) attributes.get("content");
+                            if (content != null && !content.isEmpty()) {
+                                result.put("content", content);
+                            }
+                            break;
+                    }
+                } catch (JsonProcessingException e) {
+                    logger.error("Erreur parsing attributes pour champ {}: {}", field.getType(), e.getMessage());
+                }
+            }
+
+            return result;
+        }
+        return null;
+    }    private String sanitizeString(String input) {
+        if (input == null) return null;
+        return input.trim().replaceAll("[\\r\\n\\t]", " ").replaceAll("\\s+", " ");
+    }
+
+    private Map<String, Object> cleanMapData(Map<String, Object> data) {
+        Map<String, Object> cleaned = new HashMap<>();
+
+        data.forEach((key, value) -> {
+            if (value instanceof String) {
+                cleaned.put(key, sanitizeString((String) value));
+            } else if (value instanceof Map) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> mapValue = (Map<String, Object>) value;
+                cleaned.put(key, cleanMapData(mapValue));
+            } else if (value instanceof List) {
+                // Traiter les listes récursivement si nécessaire
+                cleaned.put(key, value);
+            } else {
+                cleaned.put(key, value);
+            }
+        });
+
+        return cleaned;
     }
 
     /**

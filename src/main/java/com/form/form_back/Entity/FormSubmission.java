@@ -23,7 +23,7 @@ public class FormSubmission {
     @JoinColumn(name = "user_id", nullable = false)
     private Utilisateur utilisateur;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "LONGTEXT", nullable = false)
     private String data; // JSON contenant toutes les réponses
     @Column(name = "status")
     private String status = "SUBMITTED"; // SUBMITTED, REVIEWED, APPROVED, REJECTED
