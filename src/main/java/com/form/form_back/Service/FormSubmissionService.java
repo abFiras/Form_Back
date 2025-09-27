@@ -206,8 +206,25 @@ public class FormSubmissionService {
 
             case "number":
             case "slider":
+// Dans processFieldValue(), ajouter ce case pour calculation :
             case "calculation":
-                return processNumberField(field, value);
+                if (value instanceof String) {
+                    String calcValue = (String) value;
+                    if (calcValue != null && !calcValue.trim().isEmpty() &&
+                            !calcValue.equals("Erreur") && !calcValue.equals("Calcul non effectué")) {
+                        try {
+                            // Essayer de parser en nombre
+                            return Double.parseDouble(calcValue.trim());
+                        } catch (NumberFormatException e) {
+                            // Si ce n'est pas un nombre, retourner la chaîne
+                            return calcValue.trim();
+                        }
+                    }
+                } else if (value instanceof Number) {
+                    return value;
+                }
+                // Retourner 0 pour les calculs vides plutôt que null
+                return 0;
 
             case "checkbox":
                 // ✅ CORRECTION: Gérer les checkboxes multiples ET simples
@@ -237,6 +254,7 @@ public class FormSubmissionService {
             case "barcode":
             case "nfc":
                 return processCodeField(field, value);
+// Dans processFieldValue(), ajouter ce case pour calculation :
 
             case "table":
                 return processTableField(field, value);
@@ -308,29 +326,44 @@ public class FormSubmissionService {
     /**
      * ✅ TRAITER LES ADRESSES
      */
-    private Map<String, Object> processAddressField(FormField field, Object value) {
+    /**
+     * ✅ TRAITER LES ADRESSES - VERSION CORRIGÉE
+     */
+    private Object processAddressField(FormField field, Object value) {
         if (value instanceof Map) {
             @SuppressWarnings("unchecked")
             Map<String, Object> addressData = (Map<String, Object>) value;
 
             Map<String, Object> result = new HashMap<>();
-            result.put("street", sanitizeString((String) addressData.get("street")));
+
+            // ✅ CORRECTION : Gérer les clés exactes envoyées par le frontend
+            result.put("fullAddress", sanitizeString((String) addressData.get("fullAddress")));
+            result.put("zipCode", sanitizeString((String) addressData.get("zipCode")));
             result.put("city", sanitizeString((String) addressData.get("city")));
+
+            // Champs optionnels avec noms alternatifs
+            result.put("street", sanitizeString((String) addressData.get("street")));
             result.put("postalCode", sanitizeString((String) addressData.get("postalCode")));
             result.put("country", sanitizeString((String) addressData.get("country")));
             result.put("latitude", addressData.get("latitude"));
             result.put("longitude", addressData.get("longitude"));
 
+            // ✅ DEBUG : Log pour vérification
+            logger.debug("Processing address field - Input: {}, Output: {}", addressData, result);
+
             return result;
+
         } else if (value instanceof String) {
             // Si c'est une chaîne simple, la traiter comme adresse textuelle
             Map<String, Object> result = new HashMap<>();
             result.put("fullAddress", sanitizeString((String) value));
+            result.put("zipCode", "");
+            result.put("city", "");
             return result;
         }
+
         return null;
     }
-
     /**
      * ✅ TRAITER LES CONTACTS
      */
@@ -639,22 +672,58 @@ public class FormSubmissionService {
      * ✅ TRAITER LA GÉOLOCALISATION
      */
     private Map<String, Object> processGeolocationField(FormField field, Object value) {
-        if (!(value instanceof Map)) {
+        if (value == null) {
             return null;
         }
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> geoData = (Map<String, Object>) value;
+        // Si c'est déjà un objet Map (données GPS)
+        if (value instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> geoData = (Map<String, Object>) value;
 
-        Map<String, Object> result = new HashMap<>();
-        result.put("latitude", geoData.get("latitude"));
-        result.put("longitude", geoData.get("longitude"));
-        result.put("accuracy", geoData.get("accuracy"));
-        result.put("timestamp", LocalDateTime.now().toString());
+            Map<String, Object> result = new HashMap<>();
+            result.put("latitude", geoData.get("latitude"));
+            result.put("longitude", geoData.get("longitude"));
+            result.put("accuracy", geoData.get("accuracy"));
+            result.put("source", geoData.get("source"));
+            result.put("timestamp", geoData.get("timestamp"));
 
-        return result;
+            return result;
+        }
+
+        // Si c'est une chaîne (saisie manuelle)
+        if (value instanceof String) {
+            String coordString = (String) value;
+
+            // Ignorer les messages temporaires
+            if (coordString.contains("cours") || coordString.trim().isEmpty()) {
+                return null;
+            }
+
+            // Essayer de parser les coordonnées manuelles
+            String[] coords = coordString.split(",");
+            if (coords.length == 2) {
+                try {
+                    double latitude = Double.parseDouble(coords[0].trim());
+                    double longitude = Double.parseDouble(coords[1].trim());
+
+                    Map<String, Object> result = new HashMap<>();
+                    result.put("latitude", latitude);
+                    result.put("longitude", longitude);
+                    result.put("accuracy", null);
+                    result.put("source", "manual");
+                    result.put("timestamp", LocalDateTime.now().toString());
+
+                    return result;
+                } catch (NumberFormatException e) {
+                    logger.warn("Format de coordonnées invalide: {}", coordString);
+                    return null;
+                }
+            }
+        }
+
+        return null;
     }
-
     /**
      * ✅ TRAITER LES DATES
      */
