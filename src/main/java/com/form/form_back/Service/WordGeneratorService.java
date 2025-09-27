@@ -287,114 +287,206 @@ public class WordGeneratorService {
     private void handleImageField(XWPFDocument document, FormFieldDTO field, Object value, String fieldType) {
         XWPFParagraph responseParagraph = document.createParagraph();
 
+        // DEBUG: Ajoutez ces logs temporaires pour voir la structure des données
+        logger.info("=== DEBUG SIGNATURE/DRAWING ===");
+        logger.info("Field name: {}", field.getFieldName());
+        logger.info("Field type: {}", fieldType);
+        logger.info("Value class: {}", value != null ? value.getClass().getSimpleName() : "null");
+        logger.info("Value: {}", value);
+
+        if (value instanceof Map) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) value;
+            logger.info("Map keys: {}", map.keySet());
+            for (Map.Entry<String, Object> entry : map.entrySet()) {
+                logger.info("  {}: {} ({})", entry.getKey(), entry.getValue(),
+                        entry.getValue() != null ? entry.getValue().getClass().getSimpleName() : "null");
+            }
+        }
+        logger.info("=== END DEBUG ===");
+
         if (value != null) {
-            // Cas 1: Objet avec URL (données récentes)
-            if (value instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> imageData = (Map<String, Object>) value;
-                String imageUrl = (String) imageData.get("url");
+            try {
+                String imageData = null;
+                String imageUrl = null;
 
-                if (imageUrl != null) {
-                    // Si c'est un chemin de fichier (ex: /uploads/...)
-// Dans handleImageField, remplacer le bloc pour /uploads/ par :
-                    if (imageUrl.startsWith("/uploads/")) {
-                        try {
-                            // Tentative de charger l'image depuis le système de fichiers
-                            String fullPath = "." + imageUrl; // Ajustez le chemin selon votre configuration
-                            java.io.File imageFile = new java.io.File(fullPath);
+                // Cas 1: Map avec différentes structures possibles
+                if (value instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> dataMap = (Map<String, Object>) value;
 
-                            if (imageFile.exists()) {
-                                XWPFRun imageRun = responseParagraph.createRun();
-                                String icon = fieldType.equals("signature") ? "✍️" : "🎨";
-                                imageRun.setText(icon + " " +
-                                        (fieldType.equals("signature") ? "Signature capturée" : "Dessin capturé"));
-                                imageRun.addBreak();
+                    // Vérifier plusieurs clés possibles
+                    imageData = (String) dataMap.get("data");
+                    imageUrl = (String) dataMap.get("url");
 
-                                try (java.io.FileInputStream fis = new java.io.FileInputStream(imageFile)) {
-                                    imageRun.addPicture(fis, XWPFDocument.PICTURE_TYPE_PNG,
-                                            imageFile.getName(), Units.toEMU(200), Units.toEMU(100));
+                    // Si pas de 'data' ou 'url', vérifier d'autres clés possibles
+                    if (imageData == null && imageUrl == null) {
+                        imageData = (String) dataMap.get("imageData");
+                        imageUrl = (String) dataMap.get("imageUrl");
+                    }
+
+                    // Si toujours rien, prendre la première valeur String qui ressemble à une image
+                    if (imageData == null && imageUrl == null) {
+                        for (Object val : dataMap.values()) {
+                            if (val instanceof String) {
+                                String strVal = (String) val;
+                                if (strVal.startsWith("data:image/") || strVal.startsWith("/uploads/")) {
+                                    imageData = strVal;
+                                    break;
                                 }
-                                return;
                             }
-                        } catch (Exception e) {
-                            logger.error("Erreur chargement image fichier: {}", e.getMessage());
                         }
+                    }
+                }
+                // Cas 2: String directe
+                else if (value instanceof String) {
+                    String strValue = (String) value;
+                    if (strValue.startsWith("data:image/") || strValue.startsWith("/uploads/")) {
+                        imageData = strValue;
+                    }
+                }
 
-                        // Fallback: afficher les infos du fichier
-                        XWPFRun imageRun = responseParagraph.createRun();
-                        String icon = fieldType.equals("signature") ? "✍️" : "🎨";
-                        imageRun.setText(icon + " " +
-                                (fieldType.equals("signature") ? "Signature enregistrée" : "Dessin enregistré"));
-                        imageRun.setBold(true);
-                        imageRun.addBreak();
+                // Traitement de l'image si on a trouvé des données
+                String finalImageData = imageData != null ? imageData : imageUrl;
 
-                        XWPFRun pathRun = responseParagraph.createRun();
-                        pathRun.setText("Fichier: " + imageUrl);
-                        pathRun.setFontFamily("Courier New");
-                        pathRun.setFontSize(9);
-                        pathRun.setColor("666666");
+                if (finalImageData != null && !finalImageData.trim().isEmpty()) {
+                    logger.info("Found image data: {}", finalImageData.substring(0, Math.min(50, finalImageData.length())) + "...");
 
-                        return;
-                    }                    // Si c'est une URL base64
-                    else if (imageUrl.startsWith("data:image/")) {
+                    // Traiter les données base64
+                    if (finalImageData.startsWith("data:image/")) {
                         try {
-                            String[] parts = imageUrl.split(",");
+                            String[] parts = finalImageData.split(",");
                             if (parts.length == 2) {
                                 byte[] imageBytes = Base64.getDecoder().decode(parts[1]);
 
                                 XWPFRun imageRun = responseParagraph.createRun();
                                 String icon = fieldType.equals("signature") ? "✍️" : "🎨";
                                 imageRun.setText(icon + " " +
-                                        (fieldType.equals("signature") ? "Signature capturée" : "Dessin capturé"));
+                                        (fieldType.equals("signature") ? "Signature capturée :" : "Dessin capturé :"));
+                                imageRun.setBold(true);
                                 imageRun.addBreak();
 
                                 try (ByteArrayInputStream bis = new ByteArrayInputStream(imageBytes)) {
                                     imageRun.addPicture(bis, XWPFDocument.PICTURE_TYPE_PNG,
-                                            "image.png", Units.toEMU(200), Units.toEMU(100));
+                                            "image.png", Units.toEMU(250), Units.toEMU(150));
                                 }
+
+                                logger.info("Image successfully inserted for field: {}", field.getFieldName());
                                 return;
                             }
                         } catch (Exception e) {
-                            logger.error("Erreur insertion image base64: {}", e.getMessage());
+                            logger.error("Erreur traitement base64 pour {}: {}", field.getFieldName(), e.getMessage());
                         }
                     }
-                }
-            }
-            // Cas 2: String directe base64
-            else if (value instanceof String && ((String) value).startsWith("data:image/")) {
-                try {
-                    String imageData = (String) value;
-                    String[] parts = imageData.split(",");
-                    if (parts.length == 2) {
-                        byte[] imageBytes = Base64.getDecoder().decode(parts[1]);
 
-                        XWPFRun imageRun = responseParagraph.createRun();
-                        String icon = fieldType.equals("signature") ? "✍️" : "🎨";
-                        imageRun.setText(icon + " " +
-                                (fieldType.equals("signature") ? "Signature capturée" : "Dessin capturé"));
-                        imageRun.addBreak();
+                    // Dans handleImageField, remplacez la section de traitement des fichiers par :
 
-                        try (ByteArrayInputStream bis = new ByteArrayInputStream(imageBytes)) {
-                            imageRun.addPicture(bis, XWPFDocument.PICTURE_TYPE_PNG,
-                                    "image.png", Units.toEMU(200), Units.toEMU(100));
+// Traiter les URLs de fichier (/uploads/, /signatures/, /drawings/)
+                    else if (finalImageData.startsWith("/uploads/") ||
+                            finalImageData.startsWith("/signatures/") ||
+                            finalImageData.startsWith("/drawings/")) {
+                        try {
+                            // Essayer plusieurs chemins possibles selon votre configuration
+                            String[] possiblePaths = {
+                                    "." + finalImageData,                    // ./signatures/...
+                                    "uploads" + finalImageData,              // uploads/signatures/...
+                                    "src/main/resources/static" + finalImageData, // src/main/resources/static/signatures/...
+                                    System.getProperty("user.dir") + finalImageData, // chemin absolu
+                                    "static" + finalImageData                // static/signatures/...
+                            };
+
+                            java.io.File imageFile = null;
+
+                            // Tester chaque chemin jusqu'à trouver le fichier
+                            for (String path : possiblePaths) {
+                                java.io.File testFile = new java.io.File(path);
+                                logger.debug("Testing path: {}", testFile.getAbsolutePath());
+                                if (testFile.exists()) {
+                                    imageFile = testFile;
+                                    logger.info("Found image file at: {}", testFile.getAbsolutePath());
+                                    break;
+                                }
+                            }
+
+                            if (imageFile != null && imageFile.exists()) {
+                                XWPFRun imageRun = responseParagraph.createRun();
+                                String icon = fieldType.equals("signature") ? "✍️" : "🎨";
+                                imageRun.setText(icon + " " +
+                                        (fieldType.equals("signature") ? "Signature capturée :" : "Dessin capturé :"));
+                                imageRun.setBold(true);
+                                imageRun.addBreak();
+
+                                try (java.io.FileInputStream fis = new java.io.FileInputStream(imageFile)) {
+                                    imageRun.addPicture(fis, XWPFDocument.PICTURE_TYPE_PNG,
+                                            imageFile.getName(), Units.toEMU(250), Units.toEMU(150));
+                                }
+
+                                // Ajouter les informations du fichier
+                                imageRun.addBreak();
+                                XWPFRun infoRun = responseParagraph.createRun();
+                                infoRun.setText("Image " + (fieldType.equals("signature") ? "signature" : "dessin") + " - Cliquez pour agrandir");
+                                infoRun.setItalic(true);
+                                infoRun.setFontSize(9);
+                                infoRun.setColor("666666");
+
+                                logger.info("File image successfully inserted for field: {}", field.getFieldName());
+                                return;
+                            } else {
+                                logger.warn("Image file not found in any of the tested paths for: {}", finalImageData);
+
+                                // Log tous les chemins testés pour debug
+                                for (String path : possiblePaths) {
+                                    logger.debug("Path tested: {} - exists: {}", path, new java.io.File(path).exists());
+                                }
+
+                                // Fallback : afficher les informations même si le fichier n'existe pas
+                                XWPFRun imageRun = responseParagraph.createRun();
+                                String icon = fieldType.equals("signature") ? "✍️" : "🎨";
+                                imageRun.setText(icon + " " +
+                                        (fieldType.equals("signature") ? "Signature enregistrée" : "Dessin enregistré"));
+                                imageRun.setBold(true);
+                                imageRun.addBreak();
+
+                                XWPFRun pathRun = responseParagraph.createRun();
+                                pathRun.setText("Fichier non accessible: " + finalImageData);
+                                pathRun.setFontFamily("Courier New");
+                                pathRun.setFontSize(9);
+                                pathRun.setColor("FF6666"); // Rouge pour indiquer un problème
+
+                                pathRun.addBreak();
+                                XWPFRun helpRun = responseParagraph.createRun();
+                                helpRun.setText("Vérifiez la configuration des chemins de fichiers");
+                                helpRun.setItalic(true);
+                                helpRun.setFontSize(8);
+                                helpRun.setColor("999999");
+                                return;
+                            }
+                        } catch (Exception e) {
+                            logger.error("Erreur traitement fichier pour {}: {}", field.getFieldName(), e.getMessage());
                         }
-                        return;
                     }
-                } catch (Exception e) {
-                    logger.error("Erreur insertion signature/dessin: {}", e.getMessage());
+                } else {
+                    logger.warn("No valid image data found for field: {}", field.getFieldName());
                 }
+            } catch (Exception e) {
+                logger.error("Erreur générale traitement image pour {}: {}", field.getFieldName(), e.getMessage());
             }
+        } else {
+            logger.warn("Value is null for field: {}", field.getFieldName());
         }
 
-        // Fallback si l'image n'est pas disponible
+        // Fallback si aucune image n'a pu être traitée
         XWPFRun responseRun = responseParagraph.createRun();
         String icon = fieldType.equals("signature") ? "✍️" : "🎨";
         responseRun.setText(icon + " " +
                 (fieldType.equals("signature") ? "Signature non disponible" : "Dessin non disponible"));
         responseRun.setItalic(true);
         responseRun.setColor("999999");
+
+        logger.info("Fallback applied for field: {}", field.getFieldName());
     }
-    // Ajoutez cette méthode pour gérer les séparateurs
+
+
     private void handleSeparatorField(XWPFDocument document, FormFieldDTO field, Object value) {
         XWPFParagraph separatorParagraph = document.createParagraph();
         separatorParagraph.setAlignment(ParagraphAlignment.CENTER);
