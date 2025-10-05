@@ -36,6 +36,8 @@ public class FormController {
     private AuthService authService;
     @Autowired
     private WordGeneratorService wordGeneratorService;
+    @Autowired
+    private PdfGeneratorService pdfGeneratorService;
     private static final Logger logger = LoggerFactory.getLogger(FormController.class);
 
     // ✅ CRÉER UN FORMULAIRE
@@ -615,6 +617,44 @@ public class FormController {
                 .replaceAll("\\s+", "_") // Remplacer espaces par underscores
                 .substring(0, Math.min(fileName.length(), 50)); // Limiter la longueur
     }
+    @GetMapping("/{formId}/submissions/{submissionId}/download/pdf")
+    @PreAuthorize("hasRole('USER') or hasRole('ADMIN')")
+    public ResponseEntity<byte[]> downloadSubmissionAsPdf(
+            @PathVariable Long formId,
+            @PathVariable Long submissionId) {
+        try {
+            validateFormId(formId, "téléchargement soumission PDF");
+            if (submissionId == null || submissionId <= 0) {
+                throw new IllegalArgumentException("ID de soumission invalide: " + submissionId);
+            }
+
+            Long currentUserId = authService.getCurrentUserId();
+
+            // Récupérer le formulaire et la soumission
+            FormDTO form = formService.getFormById(formId, currentUserId);
+            FormSubmissionResponseDTO submission = formService.getSubmissionById(formId, submissionId, currentUserId);
+
+            // Générer le PDF
+            byte[] pdfDocument = pdfGeneratorService.generateSubmissionPdf(form, submission);
+
+            // Préparer la réponse
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment",
+                    sanitizeFileName(form.getName()) + "_soumission_" + submissionId + ".pdf");
+            headers.setContentLength(pdfDocument.length);
+
+            logger.info("Soumission {} du formulaire {} téléchargée en PDF par l'utilisateur {}",
+                    submissionId, formId, currentUserId);
+
+            return new ResponseEntity<>(pdfDocument, headers, HttpStatus.OK);
+
+        } catch (Exception e) {
+            logger.error("Erreur téléchargement PDF soumission {} du formulaire {}: {}",
+                    submissionId, formId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
+        }}
 
 
     // ✅ PARTAGER UN FORMULAIRE VERS LA BIBLIOTHÈQUE
